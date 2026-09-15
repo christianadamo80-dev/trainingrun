@@ -64,6 +64,46 @@
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
 
+    /* MODALE / PANNELLO CONFIGURAZIONE ZONE CARDIO */
+    #hrModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .zone-row-edit {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.82rem;
+    }
+    .zone-row-edit input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      width: 70px;
+      text-align: center;
+      font-weight: 600;
+    }
+
     /* BANNER SOGLIA */
     #thresholdAlert {
       display: none;
@@ -199,7 +239,7 @@
 
     .zone-container { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
     .zone-bar-wrapper { display: flex; align-items: center; gap: 8px; font-size: 0.74rem; }
-    .zone-label { width: 75px; color: var(--muted); }
+    .zone-label { width: 125px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .zone-track { flex: 1; height: 10px; background: #0f172a; border-radius: 6px; overflow: hidden; }
     .zone-fill { height: 100%; border-radius: 6px; }
     .zone-meta { width: 85px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -224,7 +264,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Panoramica Storica Carriera & Analisi Singola Sessione</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Zone Cardio Personalizzate (Auto/Manuale) & Analisi Avanzata</p>
     </div>
 
     <div class="top-controls">
@@ -267,7 +307,34 @@
     </div>
     <div>
       <label for="lthr">LTHR (FC bpm):</label>
-      <input type="number" id="lthr" value="168" style="width: 60px;" placeholder="168">
+      <input type="number" id="lthr" value="168" style="width: 55px;" placeholder="168">
+    </div>
+    <button class="btn-sync" style="padding: 5px 10px; font-size: 0.78rem;" onclick="openHRModal()">
+      ⚙️ Configura Zone Cardio
+    </button>
+  </div>
+
+  <!-- MODALE CONFIGURAZIONE ZONE CARDIO -->
+  <div id="hrModal">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <h3 style="font-size: 1.05rem;">Configurazione Zone Cardio (BPM)</h3>
+        <button onclick="closeHRModal()" style="background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="display: flex; gap: 16px; align-items: center;">
+        <label><input type="radio" name="hrMode" id="hrModeAuto" value="auto" checked onchange="toggleHRModeUI()"> Calcola in Auto (Friel LTHR)</label>
+        <label><input type="radio" name="hrMode" id="hrModeManual" value="manual" onchange="toggleHRModeUI()"> Manuale Personalizzato</label>
+      </div>
+
+      <div id="hrZonesEditContainer">
+        <!-- Righe editabili generate via JS -->
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+        <button class="btn-sync" onclick="closeHRModal()">Annulla</button>
+        <button class="btn-sync success" onclick="saveHRZonesFromModal()">Salva e Ricalcola</button>
+      </div>
     </div>
   </div>
 
@@ -337,7 +404,7 @@
       </div>
     </div>
 
-    <!-- Contenuto dinamico a destra: Globale vs Singola Sessione -->
+    <!-- Contenuto dinamico a destra -->
     <div style="display: flex; flex-direction: column; gap: 14px;">
       
       <!-- Titolo Contesto / Switcher -->
@@ -351,7 +418,7 @@
         </button>
       </div>
 
-      <!-- Prima fila metriche (Totali o Sessione) -->
+      <!-- Prima fila metriche -->
       <div class="grid-metrics">
         <div class="card">
           <div class="card-title" id="lblDist">Distanza & D+</div>
@@ -380,7 +447,7 @@
         </div>
       </div>
 
-      <!-- Seconda fila metriche avanzate -->
+      <!-- Seconda fila metriche -->
       <div class="grid-metrics">
         <div class="card">
           <div class="card-title" id="lblVAM">VAM Salita</div>
@@ -409,7 +476,7 @@
         </div>
       </div>
 
-      <!-- Dettaglio Terreno (Ripartizione Salita / Discesa / Piano) -->
+      <!-- Dettaglio Terreno -->
       <div class="card" style="padding: 12px 14px;">
         <div class="card-title" id="terrainTitle">Ripartizione Terreno Globale (Tutte le corse)</div>
         <table class="terrain-table">
@@ -429,9 +496,9 @@
         </table>
       </div>
 
-      <!-- Grafico Principale (Volumi Mensili se Globale / Telemetria se Singola Corsa) -->
+      <!-- Grafico Principale -->
       <div class="chart-box">
-        <h2 id="workoutChartTitle">Volumi Mensili Aggregati (Km & D+)</h2>
+        <h2 id="workoutChartTitle">Volumi Mensili Storici (Km & Dislivello D+)</h2>
         <div class="chart-canvas">
           <canvas id="workoutChart"></canvas>
         </div>
@@ -440,7 +507,7 @@
       <!-- Mappa e Mean Max Table -->
       <div class="dashboard-secondary-grid">
         <div class="chart-box" style="padding: 12px;" id="mapBoxContainer">
-          <h2 style="font-size: 0.84rem; margin-bottom: 8px;" id="mapTitle">Mappa Ultimo Percorso Registrato</h2>
+          <h2 style="font-size: 0.84rem; margin-bottom: 8px;" id="mapTitle">Mappa Ultima Sessione Registrata</h2>
           <div id="map"></div>
         </div>
 
@@ -469,12 +536,15 @@
           <div class="zone-container" id="paceZonesContainer"></div>
         </div>
         <div class="chart-box" style="padding: 14px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 10px;" id="hrZoneTitle">Distribuzione Zone Cardio Totale</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h2 style="font-size: 0.84rem;" id="hrZoneTitle">Distribuzione Zone Cardio Totale</h2>
+            <span id="hrZoneModeBadge" style="font-size: 0.7rem; color: var(--accent-ctl); background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">Auto Friel</span>
+          </div>
           <div class="zone-container" id="hrZonesContainer"></div>
         </div>
       </div>
 
-      <!-- Diario Allenamento e Note (visibile solo su singola sessione) -->
+      <!-- Diario Allenamento e Note -->
       <div class="card notes-box" id="notesBoxContainer" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span class="card-title">Note Sessione & Sforzo Percepito</span>
@@ -517,7 +587,7 @@
   let db = null;
 
   let activities = [];
-  let selectedActivityId = null; // null indica modalità Panoramica Globale
+  let selectedActivityId = null;
   let workoutChartInstance = null;
   let pmcChartInstance = null;
   let mapInstance = null;
@@ -528,8 +598,149 @@
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
   const FLAT_COST = 3.6;
 
+  // CONFIGURAZIONE ZONE CARDIO (DEFAULT / PERSISTENTE)
+  let hrConfig = {
+    mode: "auto", // "auto" o "manual"
+    zones: [
+      { name: "Z1 Recupero", min: 0, max: 142, color: "var(--z1)" },
+      { name: "Z2 Fondo Lento", min: 143, max: 151, color: "var(--z2)" },
+      { name: "Z3 Fondo Medio", min: 152, max: 159, color: "var(--z3)" },
+      { name: "Z4 Soglia Anaerobica", min: 160, max: 167, color: "var(--z4)" },
+      { name: "Z5 Sopra Soglia", min: 168, max: 220, color: "var(--z5)" }
+    ]
+  };
+
   // ==========================================
-  // 2. INDEXEDDB
+  // 2. GESTIONE ZONE CARDIO (AUTO & MANUALE)
+  // ==========================================
+  function loadHRConfig() {
+    const saved = localStorage.getItem('tp_hr_config');
+    if (saved) {
+      try { hrConfig = JSON.parse(saved); } catch(e){}
+    }
+    updateHRZonesFromCurrentSettings();
+  }
+
+  function saveHRConfig() {
+    localStorage.setItem('tp_hr_config', JSON.stringify(hrConfig));
+  }
+
+  // Calcolo automatico Friel LTHR
+  function getAutoFrielZones(lthrVal) {
+    return [
+      { name: "Z1 Recupero", min: 0, max: Math.round(lthrVal * 0.85) - 1, color: "var(--z1)" },
+      { name: "Z2 Fondo Lento", min: Math.round(lthrVal * 0.85), max: Math.round(lthrVal * 0.89), color: "var(--z2)" },
+      { name: "Z3 Fondo Medio", min: Math.round(lthrVal * 0.90), max: Math.round(lthrVal * 0.94), color: "var(--z3)" },
+      { name: "Z4 Soglia Anaer.", min: Math.round(lthrVal * 0.95), max: Math.round(lthrVal * 0.99), color: "var(--z4)" },
+      { name: "Z5 Sopra Soglia", min: Math.round(lthrVal * 1.00), max: 220, color: "var(--z5)" }
+    ];
+  }
+
+  function updateHRZonesFromCurrentSettings() {
+    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
+    if (hrConfig.mode === "auto") {
+      hrConfig.zones = getAutoFrielZones(lthrVal);
+    }
+    const badge = document.getElementById('hrZoneModeBadge');
+    if (badge) {
+      badge.innerText = hrConfig.mode === "auto" ? "Auto (Friel LTHR)" : "Manuale Personalizzato";
+      badge.style.color = hrConfig.mode === "auto" ? "var(--accent-ctl)" : "var(--accent-primary)";
+    }
+  }
+
+  function openHRModal() {
+    document.getElementById('hrModal').style.display = 'flex';
+    document.getElementById('hrModeAuto').checked = (hrConfig.mode === "auto");
+    document.getElementById('hrModeManual').checked = (hrConfig.mode === "manual");
+    renderHRZonesEditList();
+    toggleHRModeUI();
+  }
+
+  function closeHRModal() {
+    document.getElementById('hrModal').style.display = 'none';
+  }
+
+  function toggleHRModeUI() {
+    const isAuto = document.getElementById('hrModeAuto').checked;
+    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
+    if (isAuto) {
+      hrConfig.zones = getAutoFrielZones(lthrVal);
+      renderHRZonesEditList();
+    }
+    const inputs = document.querySelectorAll('#hrZonesEditContainer input');
+    inputs.forEach(inp => inp.disabled = isAuto);
+  }
+
+  function renderHRZonesEditList() {
+    const cont = document.getElementById('hrZonesEditContainer');
+    cont.innerHTML = hrConfig.zones.map((z, idx) => `
+      <div class="zone-row-edit">
+        <span style="color: ${z.color}; font-weight: 600;">${z.name}</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="number" id="hr_min_${idx}" value="${z.min}">
+          <span>-</span>
+          <input type="number" id="hr_max_${idx}" value="${z.max}">
+          <span style="color: var(--muted); font-size: 0.75rem;">bpm</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function saveHRZonesFromModal() {
+    const isManual = document.getElementById('hrModeManual').checked;
+    hrConfig.mode = isManual ? "manual" : "auto";
+
+    if (isManual) {
+      hrConfig.zones.forEach((z, idx) => {
+        z.min = parseInt(document.getElementById(`hr_min_${idx}`).value, 10) || 0;
+        z.max = parseInt(document.getElementById(`hr_max_${idx}`).value, 10) || 220;
+      });
+    } else {
+      const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
+      hrConfig.zones = getAutoFrielZones(lthrVal);
+    }
+
+    saveHRConfig();
+    closeHRModal();
+    updateHRZonesFromCurrentSettings();
+
+    // Ricalcola zone su tutte le attività
+    for (let act of activities) {
+      recomputeActivityHRZones(act);
+      await dbSaveActivity(act);
+    }
+
+    if (selectedActivityId) selectActivity(selectedActivityId);
+    else showGlobalDashboard();
+  }
+
+  function recomputeActivityHRZones(act) {
+    if (!act.points || !act.points.length) return;
+    let hrZoneTimes = [0, 0, 0, 0, 0];
+
+    for (let i = 1; i < act.points.length; i++) {
+      const dt = Math.max((act.points[i].time - act.points[i - 1].time) / 1000, 1);
+      const hr = act.points[i].hr;
+      if (hr) {
+        let placed = false;
+        for (let z = 0; z < hrConfig.zones.length; z++) {
+          if (hr >= hrConfig.zones[z].min && hr <= hrConfig.zones[z].max) {
+            hrZoneTimes[z] += dt;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          if (hr < hrConfig.zones[0].min) hrZoneTimes[0] += dt;
+          else hrZoneTimes[4] += dt;
+        }
+      }
+    }
+    act.hrZoneTimes = hrZoneTimes;
+  }
+
+  // ==========================================
+  // 3. INDEXEDDB
   // ==========================================
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -582,7 +793,7 @@
   }
 
   // ==========================================
-  // 3. UTILITY FORMATTAZIONE
+  // 4. UTILS
   // ==========================================
   function parsePaceToSec(str) {
     const parts = (str || "04:15").split(':');
@@ -618,7 +829,7 @@
   }
 
   // ==========================================
-  // 4. PARSER .FIT & .GPX
+  // 5. PARSER .FIT & .GPX
   // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
@@ -718,7 +929,7 @@
   }
 
   // ==========================================
-  // 5. CALCOLO SESSIONE
+  // 6. CALCOLO SESSIONE
   // ==========================================
   function processWorkout(raw, rFTPaSec, lthrVal) {
     const points = raw.points;
@@ -763,12 +974,19 @@
         hrCount++;
         if (hr > maxHR) maxHR = hr;
 
-        const hrRatio = hr / lthrVal;
-        if (hrRatio < 0.85) hrZoneTimes[0] += dt;
-        else if (hrRatio < 0.90) hrZoneTimes[1] += dt;
-        else if (hrRatio < 0.95) hrZoneTimes[2] += dt;
-        else if (hrRatio < 1.00) hrZoneTimes[3] += dt;
-        else hrZoneTimes[4] += dt;
+        // Inserimento nella rispettiva zona cardio
+        let placed = false;
+        for (let z = 0; z < hrConfig.zones.length; z++) {
+          if (hr >= hrConfig.zones[z].min && hr <= hrConfig.zones[z].max) {
+            hrZoneTimes[z] += dt;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          if (hr < hrConfig.zones[0].min) hrZoneTimes[0] += dt;
+          else hrZoneTimes[4] += dt;
+        }
       }
 
       const cad = points[i].cadence;
@@ -911,7 +1129,7 @@
   }
 
   // ==========================================
-  // 6. STIMA SOGLIA
+  // 7. STIMA SOGLIA
   // ==========================================
   function detectThresholds(acts) {
     if (!acts || !acts.length) return null;
@@ -965,6 +1183,7 @@
     document.getElementById('rfTPA').value = newPaceStr;
     if (pendingThreshold.hr) {
       document.getElementById('lthr').value = pendingThreshold.hr;
+      updateHRZonesFromCurrentSettings();
     }
     document.getElementById('thresholdAlert').style.display = 'none';
 
@@ -974,6 +1193,7 @@
       const globalNgpSpeed = 1000 / act.globalNgpSec;
       act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
       act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
+      recomputeActivityHRZones(act);
       await dbSaveActivity(act);
     }
 
@@ -986,7 +1206,7 @@
   }
 
   // ==========================================
-  // 7. PMC & BANNER STATUS
+  // 8. PMC & TRAINING STATUS
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1111,13 +1331,12 @@
   }
 
   // ==========================================
-  // 8. VISTA GLOBALE (PANORAMICA TUTTI GLI ALLENAMENTI)
+  // 9. VISTA GLOBALE (PANORAMICA TUTTI GLI ALLENAMENTI)
   // ==========================================
   function showGlobalDashboard() {
     selectedActivityId = null;
     renderActivityList();
 
-    // UI Header View
     document.getElementById('viewContextLabel').innerText = "PANORAMICA GENERALE";
     document.getElementById('viewContextTitle').innerText = "Riepilogo Totale di Carriera";
     document.getElementById('btnBackToGlobal').style.display = "none";
@@ -1146,7 +1365,6 @@
       return;
     }
 
-    // Aggregazione totali
     let totDist = 0, totDPlus = 0, totDLoss = 0, totTime = 0, totTSS = 0;
     let totPaceTimes = [0, 0, 0, 0, 0];
     let totHrTimes = [0, 0, 0, 0, 0];
@@ -1159,7 +1377,6 @@
     let pwrSum = 0, pwrCount = 0;
     let maxVAM = 0;
 
-    // Record storici Mean Max
     let allTimeMeanMax = {
       60: { speed: 0, hr: null, power: null },
       300: { speed: 0, hr: null, power: null },
@@ -1187,14 +1404,9 @@
       if (a.downhill) { dTot.dist += a.downhill.dist; dTot.time += a.downhill.time; dTot.ele += a.downhill.ele; }
       if (a.flat) { fTot.dist += a.flat.dist; fTot.time += a.flat.time; fTot.ele += a.flat.ele; }
 
-      if (a.paceZoneTimes) {
-        a.paceZoneTimes.forEach((t, i) => totPaceTimes[i] += t);
-      }
-      if (a.hrZoneTimes) {
-        a.hrZoneTimes.forEach((t, i) => totHrTimes[i] += t);
-      }
+      if (a.paceZoneTimes) { a.paceZoneTimes.forEach((t, i) => totPaceTimes[i] += t); }
+      if (a.hrZoneTimes) { a.hrZoneTimes.forEach((t, i) => totHrTimes[i] += t); }
 
-      // Check Mean Max Records
       if (a.meanMaxResults) {
         a.meanMaxResults.forEach(m => {
           if (m.paceSec && (!allTimeMeanMax[m.sec].speed || (1000 / m.paceSec) > allTimeMeanMax[m.sec].speed)) {
@@ -1209,7 +1421,6 @@
     const totKmEffort = totDist + (totDPlus / 100);
     const avgGlobalPaceSec = totDist > 0 ? (totTime / totDist) : 0;
 
-    // Aggiorna card numeriche in modalità globale
     document.getElementById('lblDist').innerText = "Distanza & Dislivello Totale";
     document.getElementById('valDist').innerText = `${totDist.toFixed(1)} km`;
     document.getElementById('valElevation').innerText = `D+ ${totDPlus}m | D- ${totDLoss}m`;
@@ -1246,27 +1457,20 @@
     document.getElementById('lblDecoupling').innerText = "Corse Archiviate";
     document.getElementById('valDecoupling').innerText = `${activities.length} file`;
     document.getElementById('valDecoupling').style.color = "var(--text)";
-    document.getElementById('subDecoupling').innerText = `Nel tuo database locale & cloud`;
+    document.getElementById('subDecoupling').innerText = `Nel database`;
 
-    // Ripartizione terreno globale
     renderCustomTerrainTable(uTot, dTot, fTot, "Ripartizione Terreno Globale (Tutte le corse)");
-
-    // Grafico Volumi Mensili
     renderMonthlyVolumeChart(activities);
 
-    // Mappa ultima sessione
     const sorted = [...activities].sort((a, b) => b.startTime - a.startTime);
     if (sorted.length) initOrUpdateMap(sorted[0]);
 
-    // Mean Max All-Time
     renderAllTimeMeanMaxTable(allTimeMeanMax);
-
-    // Zone Totali
     renderDualZonesDirect(totPaceTimes, totHrTimes, "Distribuzione Zone Passo Totale", "Distribuzione Zone Cardio Totale");
   }
 
   // ==========================================
-  // 9. VISTA SINGOLA SESSIONE (AL CLIC SULLA LISTA)
+  // 10. VISTA SINGOLA SESSIONE
   // ==========================================
   function selectActivity(id) {
     selectedActivityId = id;
@@ -1275,7 +1479,6 @@
 
     renderActivityList();
 
-    // UI Header Context
     document.getElementById('viewContextLabel').innerText = `DETTAGLIO SESSIONE (${act.dateStr})`;
     document.getElementById('viewContextTitle').innerText = act.title;
     document.getElementById('btnBackToGlobal').style.display = "flex";
@@ -1283,7 +1486,6 @@
     document.getElementById('mapBoxContainer').style.display = "block";
     document.getElementById('mapTitle').innerText = `Mappa Percorso: ${act.title}`;
 
-    // Aggiorna card numeriche per la sessione
     document.getElementById('lblDist').innerText = "Distanza & D+";
     document.getElementById('valDist').innerText = `${act.totalDistKm.toFixed(2)} km`;
     document.getElementById('valElevation').innerText = `D+ ${act.totalElevationGain}m | D- ${act.totalElevationLoss}m`;
@@ -1327,11 +1529,9 @@
     }
     document.getElementById('subDecoupling').innerText = "Pw:Hr / Drift cardiaco";
 
-    // Note e RPE
     document.getElementById('actRPE').value = act.rpe || "";
     document.getElementById('actNotes').value = act.notes || "";
 
-    // Grafico telemetria specifica
     renderWorkoutChart(act);
     initOrUpdateMap(act);
     renderCustomTerrainTable(act.uphill, act.downhill, act.flat, `Ripartizione Terreno (${act.title})`);
@@ -1340,7 +1540,7 @@
   }
 
   // ==========================================
-  // 10. RENDERING TABELLE E ZONE
+  // 11. TABELLE & ZONE CON RANGE BPM IN CHIARO
   // ==========================================
   function renderCustomTerrainTable(u, d, f, title) {
     document.getElementById('terrainTitle').innerText = title;
@@ -1431,6 +1631,7 @@
     document.getElementById('paceZoneTitle').innerText = paceTitle;
     document.getElementById('hrZoneTitle').innerText = hrTitle;
 
+    // Zone Passo
     const paceCont = document.getElementById('paceZonesContainer');
     const paceLabels = [
       { name: "Z1 Recupero", color: "var(--z1)" },
@@ -1445,29 +1646,26 @@
       const pct = Math.round((t / totPace) * 100);
       return `
         <div class="zone-bar-wrapper">
-          <div class="zone-label">${z.name}</div>
+          <div class="zone-label" title="${z.name}">${z.name}</div>
           <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
           <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
         </div>
       `;
     }).join('');
 
+    // Zone Cardio con Range BPM in chiaro
     const hrCont = document.getElementById('hrZonesContainer');
-    const hrLabels = [
-      { name: "Z1 Riposo/Rec.", color: "var(--z1)" },
-      { name: "Z2 Fondo Lento", color: "var(--z2)" },
-      { name: "Z3 Fondo Medio", color: "var(--z3)" },
-      { name: "Z4 Soglia Anaer.", color: "var(--z4)" },
-      { name: "Z5 Sopra Soglia", color: "var(--z5)" }
-    ];
     const totHR = hrZoneTimes ? hrZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
     if (hrZoneTimes && hrZoneTimes.some(v => v > 0)) {
-      hrCont.innerHTML = hrLabels.map((z, idx) => {
+      hrCont.innerHTML = hrConfig.zones.map((z, idx) => {
         const t = hrZoneTimes[idx] || 0;
         const pct = Math.round((t / totHR) * 100);
+        const rangeText = `${z.min}-${z.max} bpm`;
         return `
           <div class="zone-bar-wrapper">
-            <div class="zone-label">${z.name}</div>
+            <div class="zone-label" title="${z.name} (${rangeText})">
+              ${z.name} <span style="font-size: 0.65rem; color: var(--muted); font-weight: normal;">(${rangeText})</span>
+            </div>
             <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
             <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
           </div>
@@ -1479,7 +1677,7 @@
   }
 
   // ==========================================
-  // 11. GRAFICI: TELEMETRIA vs VOLUMI MENSILI
+  // 12. GRAFICI
   // ==========================================
   function renderWorkoutChart(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
@@ -1549,7 +1747,6 @@
     const ctx = document.getElementById('workoutChart').getContext('2d');
     if (workoutChartInstance) workoutChartInstance.destroy();
 
-    // Raggruppa per Anno-Mese (YYYY-MM)
     let monthly = {};
     acts.forEach(a => {
       const monthKey = a.dateStr.substring(0, 7);
@@ -1607,7 +1804,7 @@
   }
 
   // ==========================================
-  // 12. MAPPA & NOTE
+  // 13. MAPPA & NOTE
   // ==========================================
   function initOrUpdateMap(act) {
     if (!act || !act.points || !act.points.length) return;
@@ -1678,12 +1875,7 @@
     await dbDeleteActivity(id);
     activities = activities.filter(a => a.id !== id);
 
-    if (selectedActivityId === id) {
-      showGlobalDashboard();
-    } else {
-      renderActivityList();
-      showGlobalDashboard();
-    }
+    showGlobalDashboard();
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
@@ -1715,7 +1907,7 @@
   }
 
   // ==========================================
-  // 13. GOOGLE DRIVE SYNC
+  // 14. GOOGLE DRIVE SYNC
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim();
@@ -1765,7 +1957,8 @@
 
     try {
       const allActs = await dbGetAllActivities();
-      const content = JSON.stringify(allActs);
+      const payload = { activities: allActs, hrConfig: hrConfig };
+      const content = JSON.stringify(payload);
       const fileId = await findDriveFileId();
 
       if (fileId) {
@@ -1810,7 +2003,13 @@
       const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
-      const cloudActs = await res.json();
+      const data = await res.json();
+
+      let cloudActs = Array.isArray(data) ? data : data.activities;
+      if (data.hrConfig) {
+        hrConfig = data.hrConfig;
+        saveHRConfig();
+      }
 
       if (Array.isArray(cloudActs)) {
         await dbClearAll();
@@ -1818,6 +2017,7 @@
           await dbSaveActivity(act);
         }
         activities = cloudActs;
+        updateHRZonesFromCurrentSettings();
         showGlobalDashboard();
         const pmc = computePMC(activities);
         renderPMCChart(pmc);
@@ -1834,7 +2034,7 @@
   }
 
   // ==========================================
-  // 14. EVENT LISTENERS & AVVIO
+  // 15. AVVIO & LISTENERS
   // ==========================================
   const dropzone = document.getElementById('dropzone');
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
@@ -1865,15 +2065,26 @@
     updateTrainingStatusBanner(pmc, activities);
   });
 
+  document.getElementById('lthr').addEventListener('change', () => {
+    if (hrConfig.mode === "auto") {
+      updateHRZonesFromCurrentSettings();
+      saveHRConfig();
+      activities.forEach(a => recomputeActivityHRZones(a));
+      if (selectedActivityId) selectActivity(selectedActivityId);
+      else showGlobalDashboard();
+    }
+  });
+
   window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
+    loadHRConfig();
+
     const savedClientId = localStorage.getItem('tp_google_client_id');
     if (savedClientId) {
       document.getElementById('clientIdInput').value = savedClientId;
     }
 
     activities = await dbGetAllActivities();
-    // Default all'apertura: Panoramica Globale
     showGlobalDashboard();
 
     if (activities.length) {
