@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running Analytics Pro + Google Drive Sync</title>
+  <title>Running Analytics Pro + Auto Threshold</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,7 +13,7 @@
   <!-- Garmin FIT Parser -->
   <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.6.0/dist/fit-file-parser.min.js"></script>
 
-  <!-- Google Identity Services (OAuth2 client-side) -->
+  <!-- Google Identity Services (OAuth2) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
@@ -56,24 +56,26 @@
     .btn-sync:hover { background: #27374d; border-color: var(--accent-ctl); }
     .btn-sync.primary { background: #0284c7; border-color: #0284c7; color: #fff; }
     .btn-sync.primary:hover { background: #0369a1; }
+    .btn-sync.success { background: #10b981; border-color: #10b981; color: #fff; }
+    .btn-sync.success:hover { background: #059669; }
 
     .settings-bar { display: flex; gap: 12px; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
-/* BANNER NUOVA SOGLIA RILEVATA */
-<div id="thresholdAlert" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 12px 18px; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-  <div style="display: flex; align-items: center; gap: 10px;">
-    <span style="font-size: 1.3rem;">⚡</span>
-    <div>
-      <div style="font-weight: 700; font-size: 0.9rem; color: #fff;">Nuova Soglia Rilevata dalle tue corse!</div>
-      <div style="font-size: 0.8rem; color: var(--muted);" id="thresholdAlertText">rFTPa stimato: -- | LTHR stimato: --</div>
-    </div>
-  </div>
-  <div style="display: flex; gap: 8px;">
-    <button class="btn-sync primary" onclick="applyDetectedThresholds()">Applica e Ricalcola</button>
-    <button class="btn-sync" onclick="document.getElementById('thresholdAlert').style.display='none'">Ignora</button>
-  </div>
-</div>
+
+    /* BANNER NOTIFICA SOGLIA */
+    #thresholdAlert {
+      display: none;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--accent-primary);
+      border-radius: 8px;
+      padding: 12px 18px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
     /* TRAINING STATUS BANNER */
     .status-banner {
       background: linear-gradient(135deg, #151e2e 0%, #1e293b 100%);
@@ -192,7 +194,7 @@
   <header>
     <div>
       <h1>Running Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks sincronizzata con Google Drive</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks con calcolo automatico soglie & Sync Cloud</p>
     </div>
 
     <!-- Sincronizzazione Cloud Google Drive -->
@@ -209,11 +211,26 @@
     </div>
   </header>
 
+  <!-- BANNER NOTIFICA NUOVA SOGLIA RILEVATA -->
+  <div id="thresholdAlert">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 1.4rem;">⚡</span>
+      <div>
+        <div style="font-weight: 700; font-size: 0.9rem; color: #fff;">Nuova Soglia Rilevata dalle tue corse!</div>
+        <div style="font-size: 0.8rem; color: var(--muted);" id="thresholdAlertText">rFTPa stimato: -- | LTHR: --</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-sync success" onclick="applyDetectedThresholds()">Applica e Ricalcola</button>
+      <button class="btn-sync" onclick="document.getElementById('thresholdAlert').style.display='none'">Ignora</button>
+    </div>
+  </div>
+
   <!-- Barra Impostazioni / Client ID -->
   <div class="settings-bar">
     <div>
       <label for="clientIdInput">Google OAuth Client ID:</label>
-      <input type="text" id="clientIdInput" style="width: 260px; text-align: left;" placeholder="Incolla il tuo ID Client OAuth">
+      <input type="text" id="clientIdInput" style="width: 250px; text-align: left;" placeholder="Incolla il tuo ID Client">
     </div>
     <div>
       <label for="rfTPA">rFTPa (Passo Soglia):</label>
@@ -229,7 +246,7 @@
   <div class="status-banner" id="statusBanner">
     <div class="status-left">
       <div class="status-badge" id="statusBadge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">Dati insufficienti</div>
-      <div class="status-desc" id="statusDesc">Carica le tue sessioni per calcolare la forma attuale e il bilancio di carico.</div>
+      <div class="status-desc" id="statusDesc">Carica le tue sessioni per calcolare lo stato di forma e il carico.</div>
     </div>
 
     <div class="status-metrics">
@@ -266,7 +283,7 @@
   <!-- Upload GPX / FIT -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
     <h3>Carica corse (.FIT o .GPX)</h3>
-    <p>Trascina qui i tuoi file o clicca per sfogliare</p>
+    <p>Trascina qui i tuoi file dall'orologio GPS o da Strava/Garmin</p>
     <input type="file" id="fileInput" accept=".fit,.gpx" multiple>
   </div>
 
@@ -335,17 +352,34 @@
 </div>
 
 <script>
-  // --- GOOGLE DRIVE OAUTH2 CLIENT CONFIG ---
+  // ==========================================
+  // 1. VARIABILI GLOBALI E CONFIGURAZIONI
+  // ==========================================
   const DRIVE_FILENAME = "running_logbook.json";
   const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
   let tokenClient = null;
   let accessToken = null;
+  let pendingThreshold = null;
 
-  // --- DATABASE INDEXEDDB (CACHE LOCALE) ---
   const DB_NAME = "TP_Running_Pro_DB";
   const STORE_NAME = "activities";
   let db = null;
 
+  let activities = [];
+  let selectedActivityId = null;
+  let workoutChartInstance = null;
+  let pmcChartInstance = null;
+  let mapInstance = null;
+  let mapPolyline = null;
+  let mapCursorMarker = null;
+
+  const CTL_DECAY = 1 - Math.exp(-1 / 42);
+  const ATL_DECAY = 1 - Math.exp(-1 / 7);
+  const FLAT_COST = 3.6;
+
+  // ==========================================
+  // 2. DATABASE INDEXEDDB (CACHE LOCALE)
+  // ==========================================
   function initDB() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, 1);
@@ -396,19 +430,9 @@
     });
   }
 
-  // --- STATO APPLICAZIONE ---
-  let activities = [];
-  let selectedActivityId = null;
-  let workoutChartInstance = null;
-  let pmcChartInstance = null;
-  let mapInstance = null;
-  let mapPolyline = null;
-  let mapCursorMarker = null;
-
-  const CTL_DECAY = 1 - Math.exp(-1 / 42);
-  const ATL_DECAY = 1 - Math.exp(-1 / 7);
-
-  // --- UTILS FORMATTAZIONE E FISICA ---
+  // ==========================================
+  // 3. UTILS E MODELLI FISIOLOGICI
+  // ==========================================
   function parsePaceToSec(str) {
     const parts = (str || "04:15").split(':');
     return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || 0, 10);
@@ -441,9 +465,10 @@
   function energyCostRunning(i) {
     return 155.4 * Math.pow(i, 5) - 30.4 * Math.pow(i, 4) - 43.3 * Math.pow(i, 3) + 46.3 * Math.pow(i, 2) + 19.5 * i + 3.6;
   }
-  const FLAT_COST = 3.6;
 
-  // --- PARSERS FILE ---
+  // ==========================================
+  // 4. PARSER .FIT E .GPX
+  // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
       const buffer = await file.arrayBuffer();
@@ -536,7 +561,9 @@
     return Promise.resolve({ title, points, totalDist, totalElevationGain, startTime: points[0]?.time || Date.now() });
   }
 
-  // --- CALCOLO METRICHE & NGP ---
+  // ==========================================
+  // 5. CALCOLO SESSIONE, METRICHE E ZONE
+  // ==========================================
   function processWorkout(raw, rFTPaSec, lthrVal) {
     const points = raw.points;
     const rFTPaSpeed = 1000 / rFTPaSec;
@@ -610,7 +637,124 @@
     };
   }
 
-  // --- CALCOLO PMC ---
+  // ==========================================
+  // 6. ALGORITMO CALCOLO AUTOMATICO SOGLIE (MMP/MMS)
+  // ==========================================
+  function getBestMeanSpeedAndHR(points, durationSec) {
+    if (!points || points.length < 2) return null;
+    let bestSpeed = 0;
+    let bestHR = null;
+    let startIdx = 0;
+
+    for (let endIdx = 1; endIdx < points.length; endIdx++) {
+      while (startIdx < endIdx && ((points[endIdx].time - points[startIdx].time) / 1000) > durationSec) {
+        startIdx++;
+      }
+      const windowDuration = (points[endIdx].time - points[startIdx].time) / 1000;
+      if (windowDuration >= durationSec * 0.95 && windowDuration <= durationSec * 1.05) {
+        const windowDist = points[endIdx].dist - points[startIdx].dist;
+        const avgSpeed = windowDist / windowDuration;
+
+        if (avgSpeed > bestSpeed) {
+          bestSpeed = avgSpeed;
+          let sumHR = 0, cntHR = 0;
+          for (let k = startIdx; k <= endIdx; k++) {
+            if (points[k].hr) {
+              sumHR += points[k].hr;
+              cntHR++;
+            }
+          }
+          bestHR = cntHR > 0 ? Math.round(sumHR / cntHR) : null;
+        }
+      }
+    }
+    return bestSpeed > 0 ? { speed: bestSpeed, hr: bestHR } : null;
+  }
+
+  function detectThresholds(acts) {
+    if (!acts || !acts.length) return null;
+    let best60 = 0, hr60 = null;
+    let best30 = 0, hr30 = null;
+    let best20 = 0, hr20 = null;
+
+    for (const act of acts) {
+      if (!act.points || act.points.length < 60) continue;
+      const p60 = getBestMeanSpeedAndHR(act.points, 3600);
+      if (p60 && p60.speed > best60) { best60 = p60.speed; hr60 = p60.hr; }
+
+      const p30 = getBestMeanSpeedAndHR(act.points, 1800);
+      if (p30 && p30.speed > best30) { best30 = p30.speed; hr30 = p30.hr; }
+
+      const p20 = getBestMeanSpeedAndHR(act.points, 1200);
+      if (p20 && p20.speed > best20) { best20 = p20.speed; hr20 = p20.hr; }
+    }
+
+    let estimatedSpeed = 0;
+    let estimatedHR = null;
+
+    if (best60 > 0) {
+      estimatedSpeed = best60;
+      estimatedHR = hr60;
+    } else if (best30 > 0) {
+      estimatedSpeed = best30;
+      estimatedHR = hr30;
+    } else if (best20 > 0) {
+      estimatedSpeed = best20 * 0.95; // 95% dei 20 min
+      estimatedHR = hr20;
+    }
+
+    if (estimatedSpeed <= 0) return null;
+    return { paceSec: Math.round(1000 / estimatedSpeed), hr: estimatedHR };
+  }
+
+  function checkThresholdUpdates() {
+    const currentPaceSec = parsePaceToSec(document.getElementById('rfTPA').value);
+    const currentHR = parseInt(document.getElementById('lthr').value, 10) || 168;
+
+    const detected = detectThresholds(activities);
+    if (!detected) return;
+
+    const diffPace = Math.abs(detected.paceSec - currentPaceSec);
+    if (diffPace >= 3 || (detected.hr && Math.abs(detected.hr - currentHR) >= 3)) {
+      pendingThreshold = detected;
+      const paceStr = formatSecToPace(detected.paceSec);
+      const hrStr = detected.hr ? `${detected.hr} bpm` : "non rilevata";
+      
+      document.getElementById('thresholdAlertText').innerText = 
+        `Miglior prestazione continuativa: Passo Soglia ${paceStr} | FC Soglia ${hrStr}`;
+      document.getElementById('thresholdAlert').style.display = 'flex';
+    }
+  }
+
+  async function applyDetectedThresholds() {
+    if (!pendingThreshold) return;
+    const newPaceStr = formatSecToPace(pendingThreshold.paceSec).replace('/km', '');
+    document.getElementById('rfTPA').value = newPaceStr;
+    if (pendingThreshold.hr) {
+      document.getElementById('lthr').value = pendingThreshold.hr;
+    }
+
+    document.getElementById('thresholdAlert').style.display = 'none';
+
+    // Ricalcolo globale carichi con la nuova soglia
+    const rFTPaSec = pendingThreshold.paceSec;
+    for (let act of activities) {
+      const rFTPaSpeed = 1000 / rFTPaSec;
+      const globalNgpSpeed = 1000 / act.globalNgpSec;
+      act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
+      act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
+      await dbSaveActivity(act);
+    }
+
+    if (selectedActivityId) selectActivity(selectedActivityId);
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+  }
+
+  // ==========================================
+  // 7. PMC E STATUS BANNER
+  // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
     let tssByDate = {};
@@ -646,7 +790,6 @@
     return pmcSeries;
   }
 
-  // --- STATO FORMA TRAININGPEAKS ---
   function updateTrainingStatusBanner(pmcSeries, acts) {
     if (!pmcSeries.length) return;
 
@@ -687,7 +830,7 @@
       badge.innerText = "Gara / Picco di Forma (Race Ready)";
       badge.style.background = "rgba(16, 185, 129, 0.2)";
       badge.style.color = "var(--accent-primary)";
-      desc.innerText = "Fatica acuta assorbita e fitness preservata. Condizione ottimale per gareggiare o testarsi.";
+      desc.innerText = "Fatica acuta assorbita e fitness preservata. Condizione ottimale per gareggiare.";
     } else if (tsb >= -10 && tsb < 5) {
       badge.innerText = "Neutro / Mantenimento";
       badge.style.background = "rgba(56, 189, 248, 0.2)";
@@ -702,11 +845,13 @@
       badge.innerText = "Allerta Sovraccarico (Overload Risk)";
       badge.style.background = "rgba(239, 68, 68, 0.2)";
       badge.style.color = "var(--danger)";
-      desc.innerText = "Fatica accumulata troppo velocemente. Alto rischio overtraining/infortuni: programma scarico.";
+      desc.innerText = "Fatica accumulata troppo velocemente. Alto rischio overtraining/infortuni.";
     }
   }
 
-  // --- GRAFICO PMC ---
+  // ==========================================
+  // 8. GRAFICI E MAPPA PULITA
+  // ==========================================
   function renderPMCChart(pmcData) {
     const ctx = document.getElementById('pmcChart').getContext('2d');
     if (pmcChartInstance) pmcChartInstance.destroy();
@@ -789,17 +934,19 @@
     });
   }
 
-  // --- MAPPA LEAFLET ---
   function initOrUpdateMap(act) {
     const latLngs = act.points.map(p => [p.lat, p.lon]);
     if (!latLngs.length) return;
 
     if (!mapInstance) {
       mapInstance = L.map('map', { zoomControl: false }).setView(latLngs[0], 13);
+      
+      // MAPPA OPENSTREETMAP GRATUITA E SENZA CHIAVI API
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors',
-  maxZoom: 19
-}).addTo(mapInstance);
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(mapInstance);
+
       mapPolyline = L.polyline(latLngs, { color: '#38bdf8', weight: 3 }).addTo(mapInstance);
       mapCursorMarker = L.circleMarker(latLngs[0], {
         radius: 6,
@@ -841,6 +988,9 @@
     }).join('');
   }
 
+  // ==========================================
+  // 9. LOGBOOK E AZIONI UTENTE
+  // ==========================================
   function selectActivity(id) {
     selectedActivityId = id;
     const act = activities.find(a => a.id === id);
@@ -901,6 +1051,7 @@
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
+    checkThresholdUpdates();
   }
 
   async function handleFiles(files) {
@@ -923,10 +1074,13 @@
       const pmc = computePMC(activities);
       renderPMCChart(pmc);
       updateTrainingStatusBanner(pmc, activities);
+      checkThresholdUpdates(); // Controlla subito se c'è una nuova soglia
     }
   }
 
-  // --- GOOGLE DRIVE API INTEGRATION ---
+  // ==========================================
+  // 10. GOOGLE DRIVE API INTEGRATION
+  // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim();
     if (!clientId) {
@@ -980,7 +1134,6 @@
       const fileId = await findDriveFileId();
 
       if (fileId) {
-        // Aggiorna file esistente
         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
           method: 'PATCH',
           headers: {
@@ -990,7 +1143,6 @@
           body: content
         });
       } else {
-        // Crea nuovo file con multipart metadata
         const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
         const form = new FormData();
         form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -1006,7 +1158,7 @@
       setTimeout(() => { btn.innerText = "⬆️ Salva su Drive"; }, 2000);
     } catch (err) {
       console.error(err);
-      alert("Errore durante il salvataggio su Drive: " + err.message);
+      alert("Errore salvataggio: " + err.message);
       btn.innerText = "⬆️ Salva su Drive";
     }
   }
@@ -1019,7 +1171,7 @@
     try {
       const fileId = await findDriveFileId();
       if (!fileId) {
-        alert("Nessun archivio trovato su Google Drive con il nome " + DRIVE_FILENAME);
+        alert("Nessun file trovato con il nome " + DRIVE_FILENAME);
         btn.innerText = "⬇️ Sincronizza da Drive";
         return;
       }
@@ -1041,18 +1193,21 @@
           const pmc = computePMC(activities);
           renderPMCChart(pmc);
           updateTrainingStatusBanner(pmc, activities);
+          checkThresholdUpdates();
         }
         btn.innerText = "✅ Sincronizzato!";
         setTimeout(() => { btn.innerText = "⬇️ Sincronizza da Drive"; }, 2000);
       }
     } catch (err) {
       console.error(err);
-      alert("Errore durante la sincronizzazione da Drive: " + err.message);
+      alert("Errore download: " + err.message);
       btn.innerText = "⬇️ Sincronizza da Drive";
     }
   }
 
-  // --- SETUP EVENT LISTENERS ---
+  // ==========================================
+  // 11. INIZIALIZZAZIONE & EVENT LISTENERS
+  // ==========================================
   const dropzone = document.getElementById('dropzone');
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
   dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--border)'; });
@@ -1065,13 +1220,25 @@
     if (e.target.files.length) handleFiles(e.target.files);
   });
 
-  // Init
+  document.getElementById('rfTPA').addEventListener('change', async () => {
+    const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
+    for (let act of activities) {
+      const rFTPaSpeed = 1000 / rFTPaSec;
+      const globalNgpSpeed = 1000 / act.globalNgpSec;
+      act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
+      act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
+      await dbSaveActivity(act);
+    }
+    if (selectedActivityId) selectActivity(selectedActivityId);
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+  });
+
   window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
-    
-    // Recupera eventuale Client ID salvato in precedenza
     const savedClientId = localStorage.getItem('tp_google_client_id');
-    if (savedClientId) {initOrUpdateMap
+    if (savedClientId) {
       document.getElementById('clientIdInput').value = savedClientId;
     }
 
@@ -1082,6 +1249,7 @@
       const pmc = computePMC(activities);
       renderPMCChart(pmc);
       updateTrainingStatusBanner(pmc, activities);
+      checkThresholdUpdates();
     }
   });
 </script>
