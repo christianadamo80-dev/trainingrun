@@ -10,8 +10,11 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   
-  <!-- Garmin FIT Parser (per caricamento manuale drag&drop) -->
-  <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.6.0/dist/fit-file-parser.min.js"></script>
+  <!-- Garmin FIT SDK Ufficiale (Modulo Moderno) -->
+  <script type="module">
+    import { Decoder, Stream } from 'https://esm.sh/@garmin/fitsdk';
+    window.GarminFitSDK = { Decoder, Stream };
+  </script>
 
   <!-- Google Identity Services (OAuth2) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -64,7 +67,7 @@
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
 
-    /* MODALE / CONFIGURAZIONE ZONE CARDIO */
+    /* MODALE CONFIGURAZIONE ZONE CARDIO */
     #hrModal {
       display: none;
       position: fixed;
@@ -104,7 +107,7 @@
       font-weight: 600;
     }
 
-    /* BANNER SOGLIA RILEVATA */
+    /* BANNER NOTIFICA SOGLIA */
     #thresholdAlert {
       display: none;
       background: rgba(16, 185, 129, 0.15);
@@ -264,7 +267,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Sincronizzazione Automatica Garmin Connect + Google Drive</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Parser Garmin FIT Nativo + Google Drive Cloud Sync</p>
     </div>
 
     <div class="top-controls">
@@ -377,7 +380,7 @@
   <!-- Upload GPX / FIT Manuale -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
     <h3>Carica manualmente corse (.FIT o .GPX)</h3>
-    <p>Trascina qui i file o lascia che GitHub Actions li sincronizzi in background da Garmin Connect</p>
+    <p>Trascina qui i tuoi file dall'orologio Garmin o scaricati dal web</p>
     <input type="file" id="fileInput" accept=".fit,.gpx" multiple>
   </div>
 
@@ -825,7 +828,7 @@
   }
 
   // ==========================================
-  // 5. PARSER .FIT & .GPX (MANUALE)
+  // 5. PARSER .FIT NATIVO (GARMIN SDK) & .GPX
   // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
@@ -837,54 +840,74 @@
     }
   }
 
-  function parseFIT(arrayBuffer, fileName) {
-    return new Promise((resolve, reject) => {
-      const FitParser = window.FitParser || window.FitParser?.default;
-      const fitParser = new FitParser({ force: true, speedUnit: 'm/s', lengthUnit: 'm' });
+  async function parseFIT(arrayBuffer, fileName) {
+    if (!window.GarminFitSDK) {
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        if (window.GarminFitSDK) break;
+      }
+    }
+    if (!window.GarminFitSDK) {
+      throw new Error("Libreria Garmin FIT SDK non caricata. Verifica la connessione.");
+    }
 
-      fitParser.parse(arrayBuffer, (err, data) => {
-        if (err || !data.records || !data.records.length) {
-          return reject(new Error("File FIT privo di record validi"));
-        }
+    const { Decoder, Stream } = window.GarminFitSDK;
+    const stream = Stream.fromByteArray(new Uint8Array(arrayBuffer));
+    const decoder = new Decoder(stream);
+    const { messages, errors } = decoder.read();
 
-        let points = [];
-        let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
+    if (errors && errors.length > 0 && (!messages || !messages.recordMesgs)) {
+      throw new Error("File FIT non leggibile: " + (errors[0]?.message || errors[0]));
+    }
 
-        for (let i = 0; i < data.records.length; i++) {
-          const r = data.records[i];
-          if (r.position_lat === undefined || r.position_long === undefined) continue;
+    const records = messages.recordMesgs || messages.records || [];
+    if (!records.length) {
+      throw new Error("Nessun punto traccia (record) trovato nel file FIT.");
+    }
 
-          const lat = r.position_lat;
-          const lon = r.position_long;
-          const ele = r.altitude !== undefined ? r.altitude : 0;
-          const time = r.timestamp ? new Date(r.timestamp).getTime() : 0;
-          const hr = r.heart_rate || null;
-          const cadence = r.cadence || null;
-          const power = r.power || null;
+    let points = [];
+    let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
 
-          if (points.length > 0) {
-            const last = points[points.length - 1];
-            const d = (r.distance !== undefined && r.distance > last.dist)
-              ? (r.distance - last.dist)
-              : haversine(last.lat, last.lon, lat, lon);
-            totalDist += d;
-            const dEle = ele - last.ele;
-            if (dEle > 0.5) totalElevationGain += dEle;
-            else if (dEle < -0.5) totalElevationLoss += Math.abs(dEle);
-          }
-          points.push({ lat, lon, ele, time, dist: totalDist, hr, cadence, power });
-        }
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      let rawLat = r.positionLat ?? r.position_lat;
+      let rawLon = r.positionLong ?? r.position_long;
+      if (rawLat === undefined || rawLon === undefined || rawLat === null || rawLon === null) continue;
 
-        resolve({
-          title: fileName.replace(/\.[^/.]+$/, ""),
-          points,
-          totalDist,
-          totalElevationGain,
-          totalElevationLoss,
-          startTime: points[0]?.time || Date.now()
-        });
-      });
-    });
+      // Conversione semicircles -> gradi decimali
+      let lat = Math.abs(rawLat) > 90 ? rawLat * (180 / Math.pow(2, 31)) : rawLat;
+      let lon = Math.abs(rawLon) > 180 ? rawLon * (180 / Math.pow(2, 31)) : rawLon;
+
+      let ele = r.enhancedAltitude ?? r.enhanced_altitude ?? r.altitude ?? 0;
+      let dist = r.enhancedDistance ?? r.enhanced_distance ?? r.distance ?? 0;
+      let hr = r.heartRate ?? r.heart_rate ?? null;
+      let cadence = r.cadence ?? null;
+      let power = r.power ?? null;
+      let timestamp = r.timestamp ? new Date(r.timestamp).getTime() : 0;
+
+      if (points.length > 0) {
+        const last = points[points.length - 1];
+        const d = (dist > last.dist) ? (dist - last.dist) : haversine(last.lat, last.lon, lat, lon);
+        totalDist += d;
+        const dEle = ele - last.ele;
+        if (dEle > 0.5) totalElevationGain += dEle;
+        else if (dEle < -0.5) totalElevationLoss += Math.abs(dEle);
+      }
+      points.push({ lat, lon, ele, time: timestamp, dist: totalDist, hr, cadence, power });
+    }
+
+    if (!points.length) {
+      throw new Error("Nessuna coordinata GPS valida presente nel file FIT.");
+    }
+
+    return {
+      title: fileName.replace(/\.[^/.]+$/, ""),
+      points,
+      totalDist,
+      totalElevationGain,
+      totalElevationLoss,
+      startTime: points[0]?.time || Date.now()
+    };
   }
 
   function parseGPX(xmlText, fileName) {
@@ -1201,7 +1224,7 @@
   }
 
   // ==========================================
-  // 8. PMC & TRAINING STATUS
+  // 8. PMC & BANNER STATUS
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1535,7 +1558,7 @@
   }
 
   // ==========================================
-  // 11. TABELLE & ZONE CON RANGE BPM IN CHIARO
+  // 11. TABELLE & ZONE
   // ==========================================
   function renderCustomTerrainTable(u, d, f, title) {
     document.getElementById('terrainTitle').innerText = title;
@@ -1887,6 +1910,7 @@
         activities.push(processed);
       } catch (err) {
         console.error(`Errore file ${file.name}:`, err);
+        alert(`Impossibile importare ${file.name}: ${err.message}`);
       }
     }
 
@@ -2080,16 +2104,14 @@
     const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
     const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
 
-    // STEP 5: Recupero automatico del feed generato da GitHub Actions
+    // Recupero feed automatico da GitHub Actions se presente
     try {
       const res = await fetch('activities.json?t=' + Date.now());
       if (res.ok) {
         const cloudFeed = await res.json();
         const feedList = Array.isArray(cloudFeed) ? cloudFeed : (cloudFeed.activities || []);
         
-        // Unisci con i dati locali
         for (let item of feedList) {
-          // Se la corsa ha già telemetria e deve essere normalizzata/processata
           if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
             const raw = {
               id: item.id,
@@ -2111,7 +2133,6 @@
       console.log("Nessun feed activities.json trovato o caricamento offline, uso database locale.");
     }
 
-    // Carica tutte le attività aggiornate dal DB locale
     activities = await dbGetAllActivities();
     showGlobalDashboard();
 
