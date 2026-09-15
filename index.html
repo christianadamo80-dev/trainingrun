@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   
-  <!-- Garmin FIT Parser -->
+  <!-- Garmin FIT Parser (per caricamento manuale drag&drop) -->
   <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.6.0/dist/fit-file-parser.min.js"></script>
 
   <!-- Google Identity Services (OAuth2) -->
@@ -64,12 +64,12 @@
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
 
-    /* MODALE / PANNELLO CONFIGURAZIONE ZONE CARDIO */
+    /* MODALE / CONFIGURAZIONE ZONE CARDIO */
     #hrModal {
       display: none;
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       z-index: 9999;
       justify-content: center;
       align-items: center;
@@ -104,7 +104,7 @@
       font-weight: 600;
     }
 
-    /* BANNER SOGLIA */
+    /* BANNER SOGLIA RILEVATA */
     #thresholdAlert {
       display: none;
       background: rgba(16, 185, 129, 0.15);
@@ -264,7 +264,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Zone Cardio Personalizzate (Auto/Manuale) & Analisi Avanzata</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Sincronizzazione Automatica Garmin Connect + Google Drive</p>
     </div>
 
     <div class="top-controls">
@@ -327,9 +327,7 @@
         <label><input type="radio" name="hrMode" id="hrModeManual" value="manual" onchange="toggleHRModeUI()"> Manuale Personalizzato</label>
       </div>
 
-      <div id="hrZonesEditContainer">
-        <!-- Righe editabili generate via JS -->
-      </div>
+      <div id="hrZonesEditContainer"></div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
         <button class="btn-sync" onclick="closeHRModal()">Annulla</button>
@@ -376,10 +374,10 @@
     </div>
   </div>
 
-  <!-- Upload GPX / FIT -->
+  <!-- Upload GPX / FIT Manuale -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-    <h3>Carica corse (.FIT o .GPX)</h3>
-    <p>Trascina qui i file dall'orologio GPS, Garmin Connect o Strava</p>
+    <h3>Carica manualmente corse (.FIT o .GPX)</h3>
+    <p>Trascina qui i file o lascia che GitHub Actions li sincronizzi in background da Garmin Connect</p>
     <input type="file" id="fileInput" accept=".fit,.gpx" multiple>
   </div>
 
@@ -598,9 +596,9 @@
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
   const FLAT_COST = 3.6;
 
-  // CONFIGURAZIONE ZONE CARDIO (DEFAULT / PERSISTENTE)
+  // CONFIGURAZIONE ZONE CARDIO
   let hrConfig = {
-    mode: "auto", // "auto" o "manual"
+    mode: "auto",
     zones: [
       { name: "Z1 Recupero", min: 0, max: 142, color: "var(--z1)" },
       { name: "Z2 Fondo Lento", min: 143, max: 151, color: "var(--z2)" },
@@ -611,7 +609,7 @@
   };
 
   // ==========================================
-  // 2. GESTIONE ZONE CARDIO (AUTO & MANUALE)
+  // 2. GESTIONE ZONE CARDIO
   // ==========================================
   function loadHRConfig() {
     const saved = localStorage.getItem('tp_hr_config');
@@ -625,7 +623,6 @@
     localStorage.setItem('tp_hr_config', JSON.stringify(hrConfig));
   }
 
-  // Calcolo automatico Friel LTHR
   function getAutoFrielZones(lthrVal) {
     return [
       { name: "Z1 Recupero", min: 0, max: Math.round(lthrVal * 0.85) - 1, color: "var(--z1)" },
@@ -704,7 +701,6 @@
     closeHRModal();
     updateHRZonesFromCurrentSettings();
 
-    // Ricalcola zone su tutte le attività
     for (let act of activities) {
       recomputeActivityHRZones(act);
       await dbSaveActivity(act);
@@ -829,7 +825,7 @@
   }
 
   // ==========================================
-  // 5. PARSER .FIT & .GPX
+  // 5. PARSER .FIT & .GPX (MANUALE)
   // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
@@ -929,7 +925,7 @@
   }
 
   // ==========================================
-  // 6. CALCOLO SESSIONE
+  // 6. MOTORE MATEMATICO (NGP, TSS, ZONE)
   // ==========================================
   function processWorkout(raw, rFTPaSec, lthrVal) {
     const points = raw.points;
@@ -974,7 +970,6 @@
         hrCount++;
         if (hr > maxHR) maxHR = hr;
 
-        // Inserimento nella rispettiva zona cardio
         let placed = false;
         for (let z = 0; z < hrConfig.zones.length; z++) {
           if (hr >= hrConfig.zones[z].min && hr <= hrConfig.zones[z].max) {
@@ -1068,7 +1063,7 @@
     });
 
     return {
-      id: "act_" + raw.startTime + "_" + Math.random().toString(36).substr(2, 5),
+      id: raw.id || ("act_" + raw.startTime + "_" + Math.random().toString(36).substr(2, 5)),
       title: raw.title,
       startTime: raw.startTime,
       dateStr: new Date(raw.startTime).toISOString().split('T')[0],
@@ -1093,8 +1088,8 @@
       paceZoneTimes,
       hrZoneTimes,
       meanMaxResults,
-      rpe: null,
-      notes: "",
+      rpe: raw.rpe || null,
+      notes: raw.notes || "",
       points: processedPoints
     };
   }
@@ -1278,7 +1273,7 @@
       badge.innerText = "Transizione / Recupero Elevato";
       badge.style.background = "rgba(148, 163, 184, 0.2)";
       badge.style.color = "#94a3b8";
-      desc.innerText = "Fatica assente ma fitness in calo. Condizione di riposo prolungato post-obiettivo.";
+      desc.innerText = "Fatica assente ma fitness in calo. Riposo prolungato post-obiettivo.";
     } else if (tsb >= 5 && tsb <= 25) {
       badge.innerText = "Gara / Picco di Forma (Race Ready)";
       badge.style.background = "rgba(16, 185, 129, 0.2)";
@@ -1631,7 +1626,6 @@
     document.getElementById('paceZoneTitle').innerText = paceTitle;
     document.getElementById('hrZoneTitle').innerText = hrTitle;
 
-    // Zone Passo
     const paceCont = document.getElementById('paceZonesContainer');
     const paceLabels = [
       { name: "Z1 Recupero", color: "var(--z1)" },
@@ -1653,7 +1647,6 @@
       `;
     }).join('');
 
-    // Zone Cardio con Range BPM in chiaro
     const hrCont = document.getElementById('hrZonesContainer');
     const totHR = hrZoneTimes ? hrZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
     if (hrZoneTimes && hrZoneTimes.some(v => v > 0)) {
@@ -2034,7 +2027,7 @@
   }
 
   // ==========================================
-  // 15. AVVIO & LISTENERS
+  // 15. AVVIO & AUTO-SYNC GITHUB ACTIONS (STEP 5)
   // ==========================================
   const dropzone = document.getElementById('dropzone');
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
@@ -2084,6 +2077,41 @@
       document.getElementById('clientIdInput').value = savedClientId;
     }
 
+    const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
+    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
+
+    // STEP 5: Recupero automatico del feed generato da GitHub Actions
+    try {
+      const res = await fetch('activities.json?t=' + Date.now());
+      if (res.ok) {
+        const cloudFeed = await res.json();
+        const feedList = Array.isArray(cloudFeed) ? cloudFeed : (cloudFeed.activities || []);
+        
+        // Unisci con i dati locali
+        for (let item of feedList) {
+          // Se la corsa ha già telemetria e deve essere normalizzata/processata
+          if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
+            const raw = {
+              id: item.id,
+              title: item.title,
+              points: item.points,
+              totalDist: item.totalDistKm * 1000,
+              totalElevationGain: item.totalElevationGain,
+              totalElevationLoss: item.totalElevationLoss || 0,
+              startTime: item.startTime
+            };
+            const processed = processWorkout(raw, rFTPaSec, lthrVal);
+            await dbSaveActivity(processed);
+          } else {
+            await dbSaveActivity(item);
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Nessun feed activities.json trovato o caricamento offline, uso database locale.");
+    }
+
+    // Carica tutte le attività aggiornate dal DB locale
     activities = await dbGetAllActivities();
     showGlobalDashboard();
 
