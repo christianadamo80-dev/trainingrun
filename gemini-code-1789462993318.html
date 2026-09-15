@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Running Analytics Pro + Google Drive Sync</title>
+  
+  <!-- Chart.js & Leaflet -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Garmin FIT Parser -->
+  <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.6.0/dist/fit-file-parser.min.js"></script>
+
+  <!-- Google Identity Services (OAuth2 client-side) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151e2e;
+      --card-hover: #1e293b;
+      --border: #243247;
+      --text: #f1f5f9;
+      --muted: #8493a8;
+      --accent-ctl: #38bdf8;
+      --accent-atl: #f87171;
+      --accent-tsb: #fbbf24;
+      --accent-primary: #10b981;
+      --danger: #ef4444;
+      --z1: #94a3b8; --z2: #38bdf8; --z3: #10b981; --z4: #f59e0b; --z5: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 18px 14px; }
+    .container { max-width: 1360px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+
+    .top-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn-sync {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-sync:hover { background: #27374d; border-color: var(--accent-ctl); }
+    .btn-sync.primary { background: #0284c7; border-color: #0284c7; color: #fff; }
+    .btn-sync.primary:hover { background: #0369a1; }
+
+    .settings-bar { display: flex; gap: 12px; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
+    .settings-bar label { font-size: 0.76rem; color: var(--muted); }
+    .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
+
+    /* TRAINING STATUS BANNER */
+    .status-banner {
+      background: linear-gradient(135deg, #151e2e 0%, #1e293b 100%);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+    @media (min-width: 850px) {
+      .status-banner { grid-template-columns: 280px 1fr 280px; }
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+    .status-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.35; margin-top: 4px; }
+    
+    .status-metrics {
+      display: flex;
+      justify-content: space-around;
+      background: rgba(11, 15, 25, 0.5);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .status-col { text-align: center; }
+    .status-col .val { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .status-col .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+    .status-right {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 0.78rem;
+      border-left: 1px solid var(--border);
+      padding-left: 16px;
+    }
+    .status-right-row { display: flex; justify-content: space-between; color: var(--muted); }
+    .status-right-row span:last-child { font-weight: 600; color: var(--text); }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      text-align: center;
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dropzone:hover { border-color: var(--accent-primary); background: #13232c; }
+    .dropzone p { color: var(--muted); margin-top: 3px; font-size: 0.82rem; }
+    input[type="file"] { display: none; }
+
+    .grid-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .card-title { font-size: 0.7rem; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .card-val { font-size: 1.4rem; font-weight: 700; }
+    .card-sub { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+
+    .chart-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .chart-box h2 { font-size: 0.92rem; margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .chart-canvas { height: 250px; width: 100%; }
+
+    .main-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 960px) {
+      .main-grid { grid-template-columns: 320px 1fr; }
+    }
+
+    .activity-list-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; max-height: 720px; }
+    .activity-list-header { padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.88rem; }
+    .activity-items { overflow-y: auto; flex: 1; }
+    .activity-row {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .activity-row:hover { background: var(--card-hover); }
+    .activity-row.active { background: #1e3a5f; border-left: 3px solid var(--accent-ctl); }
+    .act-date { font-size: 0.7rem; color: var(--muted); }
+    .act-title { font-weight: 600; font-size: 0.84rem; margin: 1px 0; }
+    .act-stats { font-size: 0.76rem; color: var(--muted); }
+    .badge-tss { background: rgba(16, 185, 129, 0.15); color: var(--accent-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+    .btn-del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 2px 6px; }
+    .btn-del:hover { color: var(--danger); }
+
+    .map-zones-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 14px; }
+    @media (min-width: 768px) {
+      .map-zones-grid { grid-template-columns: 1fr 1fr; }
+    }
+    #map { height: 250px; border-radius: 8px; border: 1px solid var(--border); width: 100%; }
+
+    .zone-container { display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+    .zone-bar-wrapper { display: flex; align-items: center; gap: 8px; font-size: 0.76rem; }
+    .zone-label { width: 70px; color: var(--muted); }
+    .zone-track { flex: 1; height: 11px; background: #0f172a; border-radius: 6px; overflow: hidden; }
+    .zone-fill { height: 100%; border-radius: 6px; }
+    .zone-meta { width: 85px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>Running Analytics Pro</h1>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks sincronizzata con Google Drive</p>
+    </div>
+
+    <!-- Sincronizzazione Cloud Google Drive -->
+    <div class="top-controls">
+      <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()">
+        <span>☁️ Connetti Google Drive</span>
+      </button>
+      <button class="btn-sync" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()">
+        <span>⬆️ Salva su Drive</span>
+      </button>
+      <button class="btn-sync" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()">
+        <span>⬇️ Sincronizza da Drive</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Barra Impostazioni / Client ID -->
+  <div class="settings-bar">
+    <div>
+      <label for="clientIdInput">Google OAuth Client ID:</label>
+      <input type="text" id="clientIdInput" style="width: 260px; text-align: left;" placeholder="Incolla il tuo ID Client OAuth">
+    </div>
+    <div>
+      <label for="rfTPA">rFTPa (Passo Soglia):</label>
+      <input type="text" id="rfTPA" value="04:15" style="width: 60px;" placeholder="04:15">
+    </div>
+    <div>
+      <label for="lthr">LTHR (FC bpm):</label>
+      <input type="number" id="lthr" value="168" style="width: 60px;" placeholder="168">
+    </div>
+  </div>
+
+  <!-- TRAINING STATUS BANNER -->
+  <div class="status-banner" id="statusBanner">
+    <div class="status-left">
+      <div class="status-badge" id="statusBadge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">Dati insufficienti</div>
+      <div class="status-desc" id="statusDesc">Carica le tue sessioni per calcolare la forma attuale e il bilancio di carico.</div>
+    </div>
+
+    <div class="status-metrics">
+      <div class="status-col">
+        <div class="val" id="bannerCTL" style="color: var(--accent-ctl);">--</div>
+        <div class="lbl">Fitness (CTL)</div>
+      </div>
+      <div class="status-col">
+        <div class="val" id="bannerATL" style="color: var(--accent-atl);">--</div>
+        <div class="lbl">Fatica (ATL)</div>
+      </div>
+      <div class="status-col">
+        <div class="val" id="bannerTSB" style="color: var(--accent-tsb);">--</div>
+        <div class="lbl">Forma (TSB)</div>
+      </div>
+    </div>
+
+    <div class="status-right">
+      <div class="status-right-row">
+        <span>Ramp Rate (7gg):</span>
+        <span id="bannerRamp">--</span>
+      </div>
+      <div class="status-right-row">
+        <span>Km ultimi 7gg:</span>
+        <span id="bannerKm7d">-- km</span>
+      </div>
+      <div class="status-right-row">
+        <span>TSS ultimi 7gg:</span>
+        <span id="bannerTSS7d">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload GPX / FIT -->
+  <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+    <h3>Carica corse (.FIT o .GPX)</h3>
+    <p>Trascina qui i tuoi file o clicca per sfogliare</p>
+    <input type="file" id="fileInput" accept=".fit,.gpx" multiple>
+  </div>
+
+  <!-- PMC Chart -->
+  <div class="chart-box">
+    <h2>Performance Management Chart (CTL / ATL / TSB)</h2>
+    <div class="chart-canvas">
+      <canvas id="pmcChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Split View -->
+  <div class="main-grid">
+    <!-- Logbook lista -->
+    <div class="activity-list-card">
+      <div class="activity-list-header">Archivio Corse (<span id="actCount">0</span>)</div>
+      <div class="activity-items" id="activityList">
+        <p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente.</p>
+      </div>
+    </div>
+
+    <!-- Dettagli sessione -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="grid-metrics">
+        <div class="card">
+          <div class="card-title">Distanza & D+</div>
+          <div class="card-val" id="valDist">--</div>
+          <div class="card-sub" id="valElevation">D+ -- m</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tempo Movimento</div>
+          <div class="card-val" id="valTime">--</div>
+          <div class="card-sub" id="valPace">Passo: --</div>
+        </div>
+        <div class="card">
+          <div class="card-title">NGP & FC Media</div>
+          <div class="card-val" id="valNGP" style="color: var(--accent-ctl);">--</div>
+          <div class="card-sub" id="valHR">FC: -- bpm</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Training Stress</div>
+          <div class="card-val" id="valTSS" style="color: var(--accent-primary);">--</div>
+          <div class="card-sub" id="valIF">IF: --</div>
+        </div>
+      </div>
+
+      <div class="chart-box">
+        <h2 id="workoutChartTitle">Dettaglio Corsa</h2>
+        <div class="chart-canvas">
+          <canvas id="workoutChart"></canvas>
+        </div>
+      </div>
+
+      <div class="map-zones-grid">
+        <div class="chart-box" style="padding: 12px;">
+          <h2 style="font-size: 0.84rem; margin-bottom: 8px;">Mappa Percorso (Sincronizzata col cursore)</h2>
+          <div id="map"></div>
+        </div>
+        <div class="chart-box" style="padding: 14px;">
+          <h2 style="font-size: 0.84rem; margin-bottom: 10px;">Distribuzione Zone Passo</h2>
+          <div class="zone-container" id="paceZonesContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- GOOGLE DRIVE OAUTH2 CLIENT CONFIG ---
+  const DRIVE_FILENAME = "running_logbook.json";
+  const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  let tokenClient = null;
+  let accessToken = null;
+
+  // --- DATABASE INDEXEDDB (CACHE LOCALE) ---
+  const DB_NAME = "TP_Running_Pro_DB";
+  const STORE_NAME = "activities";
+  let db = null;
+
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains(STORE_NAME)) {
+          d.createObjectStore(STORE_NAME, { keyPath: "id" });
+        }
+      };
+      request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      request.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbSaveActivity(act) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(act);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbGetAllActivities() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbDeleteActivity(id) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbClearAll() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  // --- STATO APPLICAZIONE ---
+  let activities = [];
+  let selectedActivityId = null;
+  let workoutChartInstance = null;
+  let pmcChartInstance = null;
+  let mapInstance = null;
+  let mapPolyline = null;
+  let mapCursorMarker = null;
+
+  const CTL_DECAY = 1 - Math.exp(-1 / 42);
+  const ATL_DECAY = 1 - Math.exp(-1 / 7);
+
+  // --- UTILS FORMATTAZIONE E FISICA ---
+  function parsePaceToSec(str) {
+    const parts = (str || "04:15").split(':');
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || 0, 10);
+  }
+
+  function formatSecToPace(sec) {
+    if (!sec || !isFinite(sec) || sec <= 0) return "--:--";
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
+  }
+
+  function formatDuration(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.round(sec % 60);
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    return `${m}m ${s}s`;
+  }
+
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const phi1 = lat1 * Math.PI / 180, phi2 = lat2 * Math.PI / 180;
+    const dPhi = (lat2 - lat1) * Math.PI / 180;
+    const dLambda = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function energyCostRunning(i) {
+    return 155.4 * Math.pow(i, 5) - 30.4 * Math.pow(i, 4) - 43.3 * Math.pow(i, 3) + 46.3 * Math.pow(i, 2) + 19.5 * i + 3.6;
+  }
+  const FLAT_COST = 3.6;
+
+  // --- PARSERS FILE ---
+  async function parseFile(file) {
+    if (file.name.toLowerCase().endsWith('.fit')) {
+      const buffer = await file.arrayBuffer();
+      return parseFIT(buffer, file.name);
+    } else {
+      const text = await file.text();
+      return parseGPX(text, file.name);
+    }
+  }
+
+  function parseFIT(arrayBuffer, fileName) {
+    return new Promise((resolve, reject) => {
+      const FitParser = window.FitParser || window.FitParser?.default;
+      const fitParser = new FitParser({ force: true, speedUnit: 'm/s', lengthUnit: 'm' });
+
+      fitParser.parse(arrayBuffer, (err, data) => {
+        if (err || !data.records || !data.records.length) {
+          return reject(new Error("File FIT privo di record"));
+        }
+
+        let points = [];
+        let totalDist = 0;
+        let totalElevationGain = 0;
+
+        for (let i = 0; i < data.records.length; i++) {
+          const r = data.records[i];
+          if (r.position_lat === undefined || r.position_long === undefined) continue;
+
+          const lat = r.position_lat;
+          const lon = r.position_long;
+          const ele = r.altitude !== undefined ? r.altitude : 0;
+          const time = r.timestamp ? new Date(r.timestamp).getTime() : 0;
+          const hr = r.heart_rate || null;
+
+          if (points.length > 0) {
+            const last = points[points.length - 1];
+            const d = (r.distance !== undefined && r.distance > last.dist)
+              ? (r.distance - last.dist)
+              : haversine(last.lat, last.lon, lat, lon);
+            totalDist += d;
+            const dEle = ele - last.ele;
+            if (dEle > 0.5) totalElevationGain += dEle;
+          }
+          points.push({ lat, lon, ele, time, dist: totalDist, hr });
+        }
+
+        resolve({
+          title: fileName.replace(/\.[^/.]+$/, ""),
+          points,
+          totalDist,
+          totalElevationGain,
+          startTime: points[0]?.time || Date.now()
+        });
+      });
+    });
+  }
+
+  function parseGPX(xmlText, fileName) {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlText, "text/xml");
+    const trkpts = xml.querySelectorAll("trkpt");
+    if (!trkpts.length) throw new Error("File GPX non valido");
+
+    let points = [];
+    let totalDist = 0;
+    let totalElevationGain = 0;
+
+    for (let i = 0; i < trkpts.length; i++) {
+      const pt = trkpts[i];
+      const lat = parseFloat(pt.getAttribute("lat"));
+      const lon = parseFloat(pt.getAttribute("lon"));
+      const ele = parseFloat(pt.querySelector("ele")?.textContent || 0);
+      const timeStr = pt.querySelector("time")?.textContent;
+      const time = timeStr ? new Date(timeStr).getTime() : 0;
+
+      let hr = null;
+      const hrNode = pt.getElementsByTagNameNS("*", "hr")[0] || pt.querySelector("hr");
+      if (hrNode) hr = parseInt(hrNode.textContent, 10);
+
+      if (i > 0) {
+        const d = haversine(points[i - 1].lat, points[i - 1].lon, lat, lon);
+        totalDist += d;
+        const dEle = ele - points[i - 1].ele;
+        if (dEle > 0.5) totalElevationGain += dEle;
+      }
+      points.push({ lat, lon, ele, time, dist: totalDist, hr });
+    }
+
+    const title = xml.querySelector("trk > name")?.textContent || fileName.replace(/\.[^/.]+$/, "");
+    return Promise.resolve({ title, points, totalDist, totalElevationGain, startTime: points[0]?.time || Date.now() });
+  }
+
+  // --- CALCOLO METRICHE & NGP ---
+  function processWorkout(raw, rFTPaSec, lthrVal) {
+    const points = raw.points;
+    const rFTPaSpeed = 1000 / rFTPaSec;
+    let processedPoints = [];
+    let totalTimeSec = (points[points.length - 1].time - points[0].time) / 1000;
+    if (totalTimeSec <= 0) totalTimeSec = points.length;
+
+    let weightedPows = [];
+    let hrSum = 0, hrCount = 0;
+    let paceZoneTimes = [0, 0, 0, 0, 0];
+
+    for (let i = 1; i < points.length; i++) {
+      const dt = Math.max((points[i].time - points[i - 1].time) / 1000, 1);
+      const dx = points[i].dist - points[i - 1].dist;
+      const dz = points[i].ele - points[i - 1].ele;
+
+      const speed = dx / dt;
+      const slope = dx > 0 ? dz / dx : 0;
+
+      let costRatio = energyCostRunning(Math.max(-0.4, Math.min(0.4, slope))) / FLAT_COST;
+      if (costRatio < 0.5) costRatio = 0.5;
+
+      const ngpSpeed = speed * costRatio;
+      weightedPows.push(Math.pow(ngpSpeed, 4));
+
+      if (points[i].hr) {
+        hrSum += points[i].hr;
+        hrCount++;
+      }
+
+      const speedRatio = speed / rFTPaSpeed;
+      if (speedRatio < 0.75) paceZoneTimes[0] += dt;
+      else if (speedRatio < 0.90) paceZoneTimes[1] += dt;
+      else if (speedRatio < 1.00) paceZoneTimes[2] += dt;
+      else if (speedRatio < 1.10) paceZoneTimes[3] += dt;
+      else paceZoneTimes[4] += dt;
+
+      processedPoints.push({
+        lat: points[i].lat,
+        lon: points[i].lon,
+        distKm: points[i].dist / 1000,
+        elevation: Math.round(points[i].ele),
+        paceSec: speed > 0.5 ? Math.round(1000 / speed) : null,
+        ngpSec: ngpSpeed > 0.5 ? Math.round(1000 / ngpSpeed) : null,
+        hr: points[i].hr
+      });
+    }
+
+    const avgPow4 = weightedPows.reduce((a, b) => a + b, 0) / weightedPows.length;
+    const globalNgpSpeed = Math.pow(avgPow4, 0.25);
+    const globalNgpSec = 1000 / globalNgpSpeed;
+
+    const intensityFactor = globalNgpSpeed / rFTPaSpeed;
+    const rTSS = (totalTimeSec * globalNgpSpeed * intensityFactor) / (rFTPaSpeed * 3600) * 100;
+
+    return {
+      id: "act_" + raw.startTime + "_" + Math.random().toString(36).substr(2, 5),
+      title: raw.title,
+      startTime: raw.startTime,
+      dateStr: new Date(raw.startTime).toISOString().split('T')[0],
+      totalDistKm: raw.totalDist / 1000,
+      totalElevationGain: Math.round(raw.totalElevationGain),
+      totalTimeSec,
+      avgPaceSec: 1000 / (raw.totalDist / totalTimeSec),
+      avgHR: hrCount ? Math.round(hrSum / hrCount) : null,
+      globalNgpSec,
+      intensityFactor,
+      rTSS: Math.round(rTSS * 10) / 10,
+      paceZoneTimes,
+      points: processedPoints
+    };
+  }
+
+  // --- CALCOLO PMC ---
+  function computePMC(acts) {
+    if (!acts.length) return [];
+    let tssByDate = {};
+    acts.forEach(a => {
+      tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + a.rTSS;
+    });
+
+    const dates = Object.keys(tssByDate).sort();
+    let cur = new Date(dates[0]);
+    cur.setDate(cur.getDate() - 14);
+    let end = new Date();
+
+    let ctl = 0, atl = 0;
+    let pmcSeries = [];
+
+    while (cur <= end) {
+      const dStr = cur.toISOString().split('T')[0];
+      const dayTss = tssByDate[dStr] || 0;
+      const tsb = ctl - atl;
+
+      ctl = ctl + (dayTss - ctl) * CTL_DECAY;
+      atl = atl + (dayTss - atl) * ATL_DECAY;
+
+      pmcSeries.push({
+        date: dStr,
+        tss: dayTss,
+        ctl: Math.round(ctl * 10) / 10,
+        atl: Math.round(atl * 10) / 10,
+        tsb: Math.round(tsb * 10) / 10
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return pmcSeries;
+  }
+
+  // --- STATO FORMA TRAININGPEAKS ---
+  function updateTrainingStatusBanner(pmcSeries, acts) {
+    if (!pmcSeries.length) return;
+
+    const today = pmcSeries[pmcSeries.length - 1];
+    document.getElementById('bannerCTL').innerText = today.ctl;
+    document.getElementById('bannerATL').innerText = today.atl;
+    document.getElementById('bannerTSB').innerText = (today.tsb > 0 ? '+' : '') + today.tsb;
+
+    let rampRateStr = "--";
+    if (pmcSeries.length >= 8) {
+      const ctl7DaysAgo = pmcSeries[pmcSeries.length - 8].ctl;
+      const diff = Math.round((today.ctl - ctl7DaysAgo) * 10) / 10;
+      rampRateStr = `${diff > 0 ? '+' : ''}${diff} /sett`;
+      if (diff > 8) rampRateStr += " (Elevato ⚠️)";
+    }
+    document.getElementById('bannerRamp').innerText = rampRateStr;
+
+    const nowTime = Date.now();
+    const sevenDaysMs = 7 * 24 * 3600 * 1000;
+    const recentActs = acts.filter(a => (nowTime - a.startTime) <= sevenDaysMs);
+
+    const km7d = recentActs.reduce((acc, a) => acc + a.totalDistKm, 0);
+    const tss7d = recentActs.reduce((acc, a) => acc + a.rTSS, 0);
+
+    document.getElementById('bannerKm7d').innerText = `${km7d.toFixed(1)} km`;
+    document.getElementById('bannerTSS7d').innerText = Math.round(tss7d);
+
+    const badge = document.getElementById('statusBadge');
+    const desc = document.getElementById('statusDesc');
+    const tsb = today.tsb;
+
+    if (tsb > 25) {
+      badge.innerText = "Transizione / Recupero Elevato";
+      badge.style.background = "rgba(148, 163, 184, 0.2)";
+      badge.style.color = "#94a3b8";
+      desc.innerText = "Fatica assente ma fitness in calo. Condizione di riposo prolungato post-obiettivo.";
+    } else if (tsb >= 5 && tsb <= 25) {
+      badge.innerText = "Gara / Picco di Forma (Race Ready)";
+      badge.style.background = "rgba(16, 185, 129, 0.2)";
+      badge.style.color = "var(--accent-primary)";
+      desc.innerText = "Fatica acuta assorbita e fitness preservata. Condizione ottimale per gareggiare o testarsi.";
+    } else if (tsb >= -10 && tsb < 5) {
+      badge.innerText = "Neutro / Mantenimento";
+      badge.style.background = "rgba(56, 189, 248, 0.2)";
+      badge.style.color = "var(--accent-ctl)";
+      desc.innerText = "Equilibrio tra freschezza e stimolo. Ideale per rifiniture a ritmo gara.";
+    } else if (tsb >= -30 && tsb < -10) {
+      badge.innerText = "Costruzione Ottimale (Productive)";
+      badge.style.background = "rgba(245, 158, 11, 0.2)";
+      badge.style.color = "#f59e0b";
+      desc.innerText = "Fase di stimolo allenante sostenibile per incrementare la fitness di base.";
+    } else {
+      badge.innerText = "Allerta Sovraccarico (Overload Risk)";
+      badge.style.background = "rgba(239, 68, 68, 0.2)";
+      badge.style.color = "var(--danger)";
+      desc.innerText = "Fatica accumulata troppo velocemente. Alto rischio overtraining/infortuni: programma scarico.";
+    }
+  }
+
+  // --- GRAFICO PMC ---
+  function renderPMCChart(pmcData) {
+    const ctx = document.getElementById('pmcChart').getContext('2d');
+    if (pmcChartInstance) pmcChartInstance.destroy();
+    if (!pmcData.length) return;
+
+    pmcChartInstance = new Chart(ctx, {
+      data: {
+        labels: pmcData.map(d => d.date),
+        datasets: [
+          { type: 'line', label: 'CTL (Fitness)', data: pmcData.map(d => d.ctl), borderColor: '#38bdf8', borderWidth: 2.2, pointRadius: 0 },
+          { type: 'line', label: 'ATL (Fatigue)', data: pmcData.map(d => d.atl), borderColor: '#f87171', borderWidth: 1.8, pointRadius: 0 },
+          { type: 'line', label: 'TSB (Form)', data: pmcData.map(d => d.tsb), borderColor: '#fbbf24', backgroundColor: 'rgba(251, 191, 36, 0.08)', fill: true, borderWidth: 1.5, pointRadius: 0 },
+          { type: 'bar', label: 'TSS', data: pmcData.map(d => d.tss), backgroundColor: 'rgba(16, 185, 129, 0.45)', yAxisID: 'yTSS' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { grid: { color: '#1a2333' }, ticks: { color: '#8493a8' } },
+          y: { grid: { color: '#243247' }, ticks: { color: '#8493a8' } },
+          yTSS: { position: 'right', grid: { display: false }, ticks: { color: '#8493a8' } }
+        }
+      }
+    });
+  }
+
+  function renderWorkoutChart(act) {
+    const ctx = document.getElementById('workoutChart').getContext('2d');
+    document.getElementById('workoutChartTitle').innerText = `Dettaglio: ${act.title} (${act.dateStr})`;
+
+    const step = Math.max(1, Math.floor(act.points.length / 280));
+    const sampled = act.points.filter((_, idx) => idx % step === 0);
+
+    const labels = sampled.map(p => p.distKm.toFixed(1) + 'k');
+    const eleData = sampled.map(p => p.elevation);
+    const paceData = sampled.map(p => p.paceSec ? Math.min(p.paceSec, 600) / 60 : null);
+    const ngpData = sampled.map(p => p.ngpSec ? Math.min(p.ngpSec, 600) / 60 : null);
+
+    if (workoutChartInstance) workoutChartInstance.destroy();
+
+    workoutChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Quota (m)', data: eleData, borderColor: '#64748b', backgroundColor: 'rgba(100, 116, 139, 0.15)', fill: true, yAxisID: 'yElevation', pointRadius: 0 },
+          { label: 'Passo (min/km)', data: paceData, borderColor: '#f59e0b', borderWidth: 1.5, yAxisID: 'yPace', pointRadius: 0 },
+          { label: 'NGP (min/km)', data: ngpData, borderColor: '#38bdf8', borderWidth: 1.8, yAxisID: 'yPace', pointRadius: 0 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        onHover: (e, activeElements) => {
+          if (activeElements && activeElements.length > 0) {
+            const index = activeElements[0].index;
+            const pt = sampled[index];
+            if (pt && mapCursorMarker) {
+              mapCursorMarker.setLatLng([pt.lat, pt.lon]);
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: '#1a2333' }, ticks: { color: '#8493a8' } },
+          yElevation: { position: 'right', grid: { display: false }, ticks: { color: '#8493a8' } },
+          yPace: {
+            position: 'left',
+            reverse: true,
+            grid: { color: '#243247' },
+            ticks: {
+              color: '#8493a8',
+              callback: v => `${Math.floor(v)}:${Math.round((v % 1) * 60).toString().padStart(2, '0')}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // --- MAPPA LEAFLET ---
+  function initOrUpdateMap(act) {
+    const latLngs = act.points.map(p => [p.lat, p.lon]);
+    if (!latLngs.length) return;
+
+    if (!mapInstance) {
+      mapInstance = L.map('map', { zoomControl: false }).setView(latLngs[0], 13);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB & OpenStreetMap'
+      }).addTo(mapInstance);
+      mapPolyline = L.polyline(latLngs, { color: '#38bdf8', weight: 3 }).addTo(mapInstance);
+      mapCursorMarker = L.circleMarker(latLngs[0], {
+        radius: 6,
+        fillColor: '#ef4444',
+        color: '#ffffff',
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(mapInstance);
+    } else {
+      mapPolyline.setLatLngs(latLngs);
+      mapCursorMarker.setLatLng(latLngs[0]);
+    }
+    mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [20, 20] });
+  }
+
+  function renderZones(act) {
+    const container = document.getElementById('paceZonesContainer');
+    const zoneLabels = [
+      { name: "Z1 Recupero", color: "var(--z1)" },
+      { name: "Z2 Aerobico", color: "var(--z2)" },
+      { name: "Z3 Tempo", color: "var(--z3)" },
+      { name: "Z4 Soglia", color: "var(--z4)" },
+      { name: "Z5 VO2max+", color: "var(--z5)" }
+    ];
+
+    const totalSec = act.paceZoneTimes.reduce((a, b) => a + b, 0) || 1;
+    container.innerHTML = zoneLabels.map((z, idx) => {
+      const timeSec = act.paceZoneTimes[idx] || 0;
+      const pct = Math.round((timeSec / totalSec) * 100);
+      return `
+        <div class="zone-bar-wrapper">
+          <div class="zone-label">${z.name}</div>
+          <div class="zone-track">
+            <div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div>
+          </div>
+          <div class="zone-meta">${formatDuration(timeSec)} (${pct}%)</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function selectActivity(id) {
+    selectedActivityId = id;
+    const act = activities.find(a => a.id === id);
+    if (!act) return;
+
+    document.getElementById('valDist').innerText = `${act.totalDistKm.toFixed(2)} km`;
+    document.getElementById('valElevation').innerText = `D+ ${act.totalElevationGain} m`;
+    document.getElementById('valTime').innerText = formatDuration(act.totalTimeSec);
+    document.getElementById('valPace').innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
+    document.getElementById('valNGP').innerText = formatSecToPace(act.globalNgpSec);
+    document.getElementById('valHR').innerText = act.avgHR ? `FC Med: ${act.avgHR} bpm` : 'FC: --';
+    document.getElementById('valTSS').innerText = act.rTSS;
+    document.getElementById('valIF').innerText = `IF: ${act.intensityFactor.toFixed(2)}`;
+
+    renderWorkoutChart(act);
+    initOrUpdateMap(act);
+    renderZones(act);
+    renderActivityList();
+  }
+
+  function renderActivityList() {
+    const listEl = document.getElementById('activityList');
+    document.getElementById('actCount').innerText = activities.length;
+
+    if (!activities.length) {
+      listEl.innerHTML = `<p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente.</p>`;
+      return;
+    }
+
+    listEl.innerHTML = activities
+      .sort((a, b) => b.startTime - a.startTime)
+      .map(act => `
+        <div class="activity-row ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
+          <div style="flex: 1; min-width: 0; margin-right: 8px;">
+            <div class="act-date">${act.dateStr}</div>
+            <div class="act-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${act.title}</div>
+            <div class="act-stats">${act.totalDistKm.toFixed(1)} km | D+ ${act.totalElevationGain}m | ${formatSecToPace(act.avgPaceSec)}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge-tss">${act.rTSS} TSS</span>
+            <button class="btn-del" title="Elimina corsa" onclick="deleteActivity(event, '${act.id}')">&times;</button>
+          </div>
+        </div>
+      `).join('');
+  }
+
+  async function deleteActivity(event, id) {
+    event.stopPropagation();
+    if (!confirm("Eliminare questa sessione?")) return;
+    await dbDeleteActivity(id);
+    activities = activities.filter(a => a.id !== id);
+
+    if (selectedActivityId === id) {
+      selectedActivityId = activities.length ? activities[0].id : null;
+      if (selectedActivityId) selectActivity(selectedActivityId);
+    }
+    renderActivityList();
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+  }
+
+  async function handleFiles(files) {
+    const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
+    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
+
+    for (const file of files) {
+      try {
+        const raw = await parseFile(file);
+        const processed = processWorkout(raw, rFTPaSec, lthrVal);
+        await dbSaveActivity(processed);
+        activities.push(processed);
+      } catch (err) {
+        console.error(`Errore nel file ${file.name}:`, err);
+      }
+    }
+
+    if (activities.length) {
+      selectActivity(activities[activities.length - 1].id);
+      const pmc = computePMC(activities);
+      renderPMCChart(pmc);
+      updateTrainingStatusBanner(pmc, activities);
+    }
+  }
+
+  // --- GOOGLE DRIVE API INTEGRATION ---
+  function initGoogleOAuth() {
+    const clientId = document.getElementById('clientIdInput').value.trim();
+    if (!clientId) {
+      alert("Inserisci prima il tuo Google Client ID nelle impostazioni in alto.");
+      return false;
+    }
+    localStorage.setItem('tp_google_client_id', clientId);
+
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: (tokenResponse) => {
+        if (tokenResponse.error) {
+          console.error(tokenResponse);
+          alert("Autenticazione Google fallita: " + tokenResponse.error);
+          return;
+        }
+        accessToken = tokenResponse.access_token;
+        document.getElementById('btnGoogleAuth').innerText = "✅ Connesso a Drive";
+        document.getElementById('btnPushDrive').style.display = "flex";
+        document.getElementById('btnPullDrive').style.display = "flex";
+      }
+    });
+    return true;
+  }
+
+  function handleAuthClick() {
+    if (!tokenClient) {
+      if (!initGoogleOAuth()) return;
+    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+
+  async function findDriveFileId() {
+    const query = encodeURIComponent(`name = '${DRIVE_FILENAME}' and trashed = false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    return data.files && data.files.length ? data.files[0].id : null;
+  }
+
+  async function saveToGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Google Drive!");
+    const btn = document.getElementById('btnPushDrive');
+    btn.innerText = "Salvataggio...";
+
+    try {
+      const allActs = await dbGetAllActivities();
+      const content = JSON.stringify(allActs);
+      const fileId = await findDriveFileId();
+
+      if (fileId) {
+        // Aggiorna file esistente
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: content
+        });
+      } else {
+        // Crea nuovo file con multipart metadata
+        const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', new Blob([content], { type: 'application/json' }));
+
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: form
+        });
+      }
+      btn.innerText = "✅ Salvato!";
+      setTimeout(() => { btn.innerText = "⬆️ Salva su Drive"; }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante il salvataggio su Drive: " + err.message);
+      btn.innerText = "⬆️ Salva su Drive";
+    }
+  }
+
+  async function loadFromGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Google Drive!");
+    const btn = document.getElementById('btnPullDrive');
+    btn.innerText = "Download...";
+
+    try {
+      const fileId = await findDriveFileId();
+      if (!fileId) {
+        alert("Nessun archivio trovato su Google Drive con il nome " + DRIVE_FILENAME);
+        btn.innerText = "⬇️ Sincronizza da Drive";
+        return;
+      }
+
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const cloudActs = await res.json();
+
+      if (Array.isArray(cloudActs)) {
+        await dbClearAll();
+        for (let act of cloudActs) {
+          await dbSaveActivity(act);
+        }
+        activities = cloudActs;
+        renderActivityList();
+        if (activities.length) {
+          selectActivity(activities[0].id);
+          const pmc = computePMC(activities);
+          renderPMCChart(pmc);
+          updateTrainingStatusBanner(pmc, activities);
+        }
+        btn.innerText = "✅ Sincronizzato!";
+        setTimeout(() => { btn.innerText = "⬇️ Sincronizza da Drive"; }, 2000);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante la sincronizzazione da Drive: " + err.message);
+      btn.innerText = "⬇️ Sincronizza da Drive";
+    }
+  }
+
+  // --- SETUP EVENT LISTENERS ---
+  const dropzone = document.getElementById('dropzone');
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
+  dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--border)'; });
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.style.borderColor = 'var(--border)';
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    if (e.target.files.length) handleFiles(e.target.files);
+  });
+
+  // Init
+  window.addEventListener('DOMContentLoaded', async () => {
+    await initDB();
+    
+    // Recupera eventuale Client ID salvato in precedenza
+    const savedClientId = localStorage.getItem('tp_google_client_id');
+    if (savedClientId) {
+      document.getElementById('clientIdInput').value = savedClientId;
+    }
+
+    activities = await dbGetAllActivities();
+    renderActivityList();
+    if (activities.length) {
+      selectActivity(activities[activities.length - 1].id);
+      const pmc = computePMC(activities);
+      renderPMCChart(pmc);
+      updateTrainingStatusBanner(pmc, activities);
+    }
+  });
+</script>
+
+</body>
+</html>
