@@ -783,9 +783,10 @@
 
     if (!mapInstance) {
       mapInstance = L.map('map', { zoomControl: false }).setView(latLngs[0], 13);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CartoDB & OpenStreetMap'
-      }).addTo(mapInstance);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(mapInstance);
       mapPolyline = L.polyline(latLngs, { color: '#38bdf8', weight: 3 }).addTo(mapInstance);
       mapCursorMarker = L.circleMarker(latLngs[0], {
         radius: 6,
@@ -1057,7 +1058,7 @@
     
     // Recupera eventuale Client ID salvato in precedenza
     const savedClientId = localStorage.getItem('tp_google_client_id');
-    if (savedClientId) {
+    if (savedClientId) {initOrUpdateMap
       document.getElementById('clientIdInput').value = savedClientId;
     }
 
