@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   
-  <!-- Garmin FIT SDK Ufficiale (Modulo Moderno) -->
+  <!-- Garmin FIT SDK Ufficiale -->
   <script type="module">
     import { Decoder, Stream } from 'https://esm.sh/@garmin/fitsdk';
     window.GarminFitSDK = { Decoder, Stream };
@@ -62,12 +62,27 @@
     .btn-sync.primary:hover { background: #0369a1; }
     .btn-sync.success { background: #10b981; border-color: #10b981; color: #fff; }
     .btn-sync.success:hover { background: #059669; }
+    .btn-sync.ai { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: #fff; }
+    .btn-sync.ai:hover { opacity: 0.9; }
 
     .settings-bar { display: flex; gap: 12px; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
 
-    /* MODALE CONFIGURAZIONE ZONE CARDIO */
+    /* BOX FEEDBACK IA */
+    .ai-feedback-box {
+      display: none;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
+      border: 1px solid #6366f1;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 14px;
+      position: relative;
+    }
+    .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.5; white-space: pre-line; }
+
+    /* MODALE ZONE CARDIO */
     #hrModal {
       display: none;
       position: fixed;
@@ -107,7 +122,6 @@
       font-weight: 600;
     }
 
-    /* BANNER NOTIFICA SOGLIA */
     #thresholdAlert {
       display: none;
       background: rgba(16, 185, 129, 0.15);
@@ -120,7 +134,6 @@
       flex-wrap: wrap;
     }
 
-    /* TRAINING STATUS BANNER */
     .status-banner {
       background: linear-gradient(135deg, #151e2e 0%, #1e293b 100%);
       border: 1px solid var(--border);
@@ -182,7 +195,6 @@
     .dropzone p { color: var(--muted); margin-top: 3px; font-size: 0.82rem; }
     input[type="file"] { display: none; }
 
-    /* Griglie & Cards */
     .view-title-bar {
       display: flex;
       justify-content: space-between;
@@ -191,6 +203,8 @@
       padding: 10px 14px;
       border-radius: 8px;
       border: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .view-title-bar h2 { font-size: 1.05rem; font-weight: 700; }
 
@@ -267,7 +281,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Parser Garmin FIT Nativo + Google Drive Cloud Sync</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Virtuale (Gemini)</p>
     </div>
 
     <div class="top-controls">
@@ -283,7 +297,7 @@
     </div>
   </header>
 
-  <!-- BANNER NOTIFICA SOGLIA -->
+  <!-- BANNER SOGLIA RILEVATA -->
   <div id="thresholdAlert">
     <div style="display: flex; align-items: center; gap: 10px;">
       <span style="font-size: 1.4rem;">⚡</span>
@@ -301,8 +315,12 @@
   <!-- Barra Impostazioni -->
   <div class="settings-bar">
     <div>
-      <label for="clientIdInput">Google OAuth Client ID:</label>
-      <input type="text" id="clientIdInput" style="width: 250px; text-align: left;" placeholder="Incolla il tuo ID Client">
+      <label for="geminiApiKey">Gemini API Key:</label>
+      <input type="password" id="geminiApiKey" style="width: 170px; text-align: left;" placeholder="Incolla chiave AI Studio" onchange="saveGeminiApiKey()">
+    </div>
+    <div>
+      <label for="clientIdInput">Google Drive Client ID:</label>
+      <input type="text" id="clientIdInput" style="width: 200px; text-align: left;" placeholder="Client ID OAuth2">
     </div>
     <div>
       <label for="rfTPA">rFTPa (Passo Soglia):</label>
@@ -313,7 +331,7 @@
       <input type="number" id="lthr" value="168" style="width: 55px;" placeholder="168">
     </div>
     <button class="btn-sync" style="padding: 5px 10px; font-size: 0.78rem;" onclick="openHRModal()">
-      ⚙️ Configura Zone Cardio
+      ⚙️ Zone Cardio
     </button>
   </div>
 
@@ -342,7 +360,10 @@
   <!-- TRAINING STATUS BANNER -->
   <div class="status-banner" id="statusBanner">
     <div class="status-left">
-      <div class="status-badge" id="statusBadge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">Dati insufficienti</div>
+      <div style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+        <div class="status-badge" id="statusBadge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">Dati insufficienti</div>
+        <button class="btn-sync ai" style="padding: 4px 8px; font-size: 0.72rem;" onclick="askAITrainingStatus()">🤖 Analizza Forma con IA</button>
+      </div>
       <div class="status-desc" id="statusDesc">Carica le tue sessioni per calcolare lo stato di forma e il carico.</div>
     </div>
 
@@ -377,10 +398,19 @@
     </div>
   </div>
 
+  <!-- Box Risposta IA per Training Status -->
+  <div class="ai-feedback-box" id="aiStatusBox">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>🤖 Valutazione Coach IA (Stato di Forma & Carico)</h3>
+      <button onclick="document.getElementById('aiStatusBox').style.display='none'" style="background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem;">&times;</button>
+    </div>
+    <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
+  </div>
+
   <!-- Upload GPX / FIT Manuale -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
     <h3>Carica manualmente corse (.FIT o .GPX)</h3>
-    <p>Trascina qui i tuoi file dall'orologio Garmin o scaricati dal web</p>
+    <p>Trascina qui i tuoi file o lascia che GitHub Actions li sincronizzi in automatico</p>
     <input type="file" id="fileInput" accept=".fit,.gpx" multiple>
   </div>
 
@@ -414,9 +444,23 @@
           <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em;" id="viewContextLabel">PANORAMICA GENERALE</span>
           <h2 id="viewContextTitle">Riepilogo Totale di Carriera</h2>
         </div>
-        <button id="btnBackToGlobal" class="btn-sync" style="display: none;" onclick="showGlobalDashboard()">
-          ⬅️ Torna alla Panoramica Generale
-        </button>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnAskAIActivity" class="btn-sync ai" style="display: none;" onclick="askAIActivity()">
+            🤖 Chiedi Feedback Corsa
+          </button>
+          <button id="btnBackToGlobal" class="btn-sync" style="display: none;" onclick="showGlobalDashboard()">
+            ⬅️ Panoramica Generale
+          </button>
+        </div>
+      </div>
+
+      <!-- Box Risposta IA per Singola Attività -->
+      <div class="ai-feedback-box" id="aiActivityBox">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3>🤖 Debriefing Corsa del Coach IA</h3>
+          <button onclick="document.getElementById('aiActivityBox').style.display='none'" style="background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem;">&times;</button>
+        </div>
+        <div class="ai-feedback-content" id="aiActivityContent">Generazione feedback in corso...</div>
       </div>
 
       <!-- Prima fila metriche -->
@@ -599,7 +643,6 @@
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
   const FLAT_COST = 3.6;
 
-  // CONFIGURAZIONE ZONE CARDIO
   let hrConfig = {
     mode: "auto",
     zones: [
@@ -612,7 +655,129 @@
   };
 
   // ==========================================
-  // 2. GESTIONE ZONE CARDIO
+  // 2. MODULO IA (GOOGLE GEMINI API)
+  // ==========================================
+  function saveGeminiApiKey() {
+    const key = document.getElementById('geminiApiKey').value.trim();
+    localStorage.setItem('tp_gemini_api_key', key);
+  }
+
+  async function callGemini(promptText) {
+    const apiKey = document.getElementById('geminiApiKey').value.trim();
+    if (!apiKey) {
+      alert("Inserisci prima la tua chiave Gemini API nel campo in alto.");
+      return null;
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const payload = {
+      contents: [{
+        parts: [{ text: promptText }]
+      }],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 800
+      }
+    };
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error?.message || "Errore nella chiamata all'IA");
+    }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Nessun feedback generato.";
+  }
+
+  async function askAITrainingStatus() {
+    const pmc = computePMC(activities);
+    if (!pmc.length) return alert("Carica prima delle sessioni per analizzare lo stato di forma.");
+
+    const today = pmc[pmc.length - 1];
+    const nowTime = Date.now();
+    const sevenDaysMs = 7 * 24 * 3600 * 1000;
+    const recentActs = activities.filter(a => (nowTime - a.startTime) <= sevenDaysMs);
+    const km7d = recentActs.reduce((acc, a) => acc + a.totalDistKm, 0).toFixed(1);
+    const tss7d = Math.round(recentActs.reduce((acc, a) => acc + a.rTSS, 0));
+    const rampRate = document.getElementById('bannerRamp').innerText;
+
+    const box = document.getElementById('aiStatusBox');
+    const content = document.getElementById('aiStatusContent');
+    box.style.display = 'block';
+    content.innerText = "Analisi in corso dei carichi fisiologici con Gemini...";
+
+    const prompt = `Agisci come un esperto allenatore di running e trail running (stile Joe Friel / TrainingPeaks). 
+Analizza i seguenti dati del mio carico di allenamento:
+- Fitness attuale (CTL): ${today.ctl}
+- Fatica acuta (ATL): ${today.atl}
+- Forma/Freschezza (TSB): ${today.tsb}
+- Ramp Rate ultimi 7gg: ${rampRate}
+- Chilometri ultimi 7gg: ${km7d} km
+- Training Stress Score (TSS) ultimi 7gg: ${tss7d}
+
+Forniscimi un'analisi sintetica in 3 punti:
+1. **Stato Attuale e Rischio Sovraccarico**: interpreta i valori di TSB e Ramp Rate.
+2. **Adattamento Fisiologico**: stiamo costruendo o siamo in fase di stanchezza eccessiva?
+3. **Consiglio per i prossimi 2-3 giorni**: suggerisci se spingere con sessioni qualitative, fare fondo lento Z2 o prevedere un giorno di scarico attivo/riposo.`;
+
+    try {
+      const reply = await callGemini(prompt);
+      content.innerText = reply;
+    } catch (err) {
+      content.innerText = "Errore: " + err.message;
+    }
+  }
+
+  async function askAIActivity() {
+    if (!selectedActivityId) return;
+    const act = activities.find(a => a.id === selectedActivityId);
+    if (!act) return;
+
+    const box = document.getElementById('aiActivityBox');
+    const content = document.getElementById('aiActivityContent');
+    box.style.display = 'block';
+    content.innerText = `Analisi dell'allenamento "${act.title}" in corso...`;
+
+    const u = act.uphill, d = act.downhill, f = act.flat;
+    const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
+    const dPace = d.dist > 10 ? formatSecToPace(d.time / (d.dist / 1000)) : "--";
+
+    const prompt = `Agisci come un coach professionista di corsa e trail running.
+Analizza questa sessione di allenamento:
+- Nome/Data: ${act.title} (${act.dateStr})
+- Distanza: ${act.totalDistKm.toFixed(2)} km | D+: ${act.totalElevationGain}m | D-: ${act.totalElevationLoss}m
+- Tempo Totale: ${formatDuration(act.totalTimeSec)}
+- Passo Medio: ${formatSecToPace(act.avgPaceSec)} | Passo Normalizzato (NGP): ${formatSecToPace(act.globalNgpSec)}
+- Intensity Factor (IF): ${act.intensityFactor.toFixed(2)} | rTSS: ${act.rTSS}
+- Km-Sforzo: ${act.kmEffort} km | VAM Salita: ${act.vam} m/h
+- Frequenza Cardiaca Media: ${act.avgHR ? act.avgHR + " bpm" : "N/D"} (Max: ${act.maxHR || "N/D"})
+- Aerobic Decoupling (Drift cardiaco Pw:Hr): ${act.decoupling !== null ? act.decoupling + "%" : "N/D"}
+- Cadenza Media: ${act.avgCadence ? act.avgCadence + " spm" : "N/D"}
+- Ripartizione: Salita ${(u.dist/1000).toFixed(1)}km a ${uPace}, Discesa ${(d.dist/1000).toFixed(1)}km a ${dPace}
+- RPE atleta (sforzo 1-10): ${act.rpe || "non specificato"}
+- Note atleta: ${act.notes || "nessuna nota"}
+
+Fornisci un debriefing tecnico strutturato:
+1. **Valutazione dell'Efficienza**: analizza la differenza tra passo reale e NGP e commenta il Decoupling Aerobico (se sotto il 5% ottima base aerobica, se superiore c'è stato calo di efficienza o disidratazione).
+2. **Gestione Pendenze (Trail/Salita)**: commenta la VAM e il ritmo in salita vs discesa.
+3. **Giudizio Finale & Recupero**: quanto è stato tassante l'allenamento e come gestire le prossime 24 ore.`;
+
+    try {
+      const reply = await callGemini(prompt);
+      content.innerText = reply;
+    } catch (err) {
+      content.innerText = "Errore: " + err.message;
+    }
+  }
+
+  // ==========================================
+  // 3. GESTIONE ZONE CARDIO
   // ==========================================
   function loadHRConfig() {
     const saved = localStorage.getItem('tp_hr_config');
@@ -739,7 +904,7 @@
   }
 
   // ==========================================
-  // 3. INDEXEDDB
+  // 4. INDEXEDDB
   // ==========================================
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -792,7 +957,7 @@
   }
 
   // ==========================================
-  // 4. UTILS
+  // 5. UTILS
   // ==========================================
   function parsePaceToSec(str) {
     const parts = (str || "04:15").split(':');
@@ -828,7 +993,7 @@
   }
 
   // ==========================================
-  // 5. PARSER .FIT NATIVO (GARMIN SDK) & .GPX
+  // 6. PARSER .FIT NATIVO (GARMIN SDK) & .GPX
   // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
@@ -874,7 +1039,6 @@
       let rawLon = r.positionLong ?? r.position_long;
       if (rawLat === undefined || rawLon === undefined || rawLat === null || rawLon === null) continue;
 
-      // Conversione semicircles -> gradi decimali
       let lat = Math.abs(rawLat) > 90 ? rawLat * (180 / Math.pow(2, 31)) : rawLat;
       let lon = Math.abs(rawLon) > 180 ? rawLon * (180 / Math.pow(2, 31)) : rawLon;
 
@@ -948,7 +1112,7 @@
   }
 
   // ==========================================
-  // 6. MOTORE MATEMATICO (NGP, TSS, ZONE)
+  // 7. MOTORE MATEMATICO
   // ==========================================
   function processWorkout(raw, rFTPaSec, lthrVal) {
     const points = raw.points;
@@ -1147,7 +1311,7 @@
   }
 
   // ==========================================
-  // 7. STIMA SOGLIA
+  // 8. STIMA SOGLIA
   // ==========================================
   function detectThresholds(acts) {
     if (!acts || !acts.length) return null;
@@ -1224,7 +1388,7 @@
   }
 
   // ==========================================
-  // 8. PMC & BANNER STATUS
+  // 9. PMC & STATUS
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1349,7 +1513,7 @@
   }
 
   // ==========================================
-  // 9. VISTA GLOBALE (PANORAMICA TUTTI GLI ALLENAMENTI)
+  // 10. VISTA GLOBALE (PANORAMICA TUTTI GLI ALLENAMENTI)
   // ==========================================
   function showGlobalDashboard() {
     selectedActivityId = null;
@@ -1358,6 +1522,8 @@
     document.getElementById('viewContextLabel').innerText = "PANORAMICA GENERALE";
     document.getElementById('viewContextTitle').innerText = "Riepilogo Totale di Carriera";
     document.getElementById('btnBackToGlobal').style.display = "none";
+    document.getElementById('btnAskAIActivity').style.display = "none";
+    document.getElementById('aiActivityBox').style.display = "none";
     document.getElementById('notesBoxContainer').style.display = "none";
     document.getElementById('mapBoxContainer').style.display = "block";
     document.getElementById('mapTitle').innerText = "Mappa Ultima Sessione Registrata";
@@ -1488,7 +1654,7 @@
   }
 
   // ==========================================
-  // 10. VISTA SINGOLA SESSIONE
+  // 11. VISTA SINGOLA SESSIONE
   // ==========================================
   function selectActivity(id) {
     selectedActivityId = id;
@@ -1500,6 +1666,8 @@
     document.getElementById('viewContextLabel').innerText = `DETTAGLIO SESSIONE (${act.dateStr})`;
     document.getElementById('viewContextTitle').innerText = act.title;
     document.getElementById('btnBackToGlobal').style.display = "flex";
+    document.getElementById('btnAskAIActivity').style.display = "flex";
+    document.getElementById('aiActivityBox').style.display = "none";
     document.getElementById('notesBoxContainer').style.display = "flex";
     document.getElementById('mapBoxContainer').style.display = "block";
     document.getElementById('mapTitle').innerText = `Mappa Percorso: ${act.title}`;
@@ -1558,7 +1726,7 @@
   }
 
   // ==========================================
-  // 11. TABELLE & ZONE
+  // 12. TABELLE & ZONE
   // ==========================================
   function renderCustomTerrainTable(u, d, f, title) {
     document.getElementById('terrainTitle').innerText = title;
@@ -1693,7 +1861,7 @@
   }
 
   // ==========================================
-  // 12. GRAFICI
+  // 13. GRAFICI
   // ==========================================
   function renderWorkoutChart(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
@@ -1820,7 +1988,7 @@
   }
 
   // ==========================================
-  // 13. MAPPA & NOTE
+  // 14. MAPPA & NOTE
   // ==========================================
   function initOrUpdateMap(act) {
     if (!act || !act.points || !act.points.length) return;
@@ -1924,7 +2092,7 @@
   }
 
   // ==========================================
-  // 14. GOOGLE DRIVE SYNC
+  // 15. GOOGLE DRIVE SYNC
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim();
@@ -2051,7 +2219,7 @@
   }
 
   // ==========================================
-  // 15. AVVIO & AUTO-SYNC GITHUB ACTIONS (STEP 5)
+  // 16. AVVIO & LISTENERS
   // ==========================================
   const dropzone = document.getElementById('dropzone');
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
@@ -2101,10 +2269,14 @@
       document.getElementById('clientIdInput').value = savedClientId;
     }
 
+    const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
+    if (savedGeminiKey) {
+      document.getElementById('geminiApiKey').value = savedGeminiKey;
+    }
+
     const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
     const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
 
-    // Recupero feed automatico da GitHub Actions se presente
     try {
       const res = await fetch('activities.json?t=' + Date.now());
       if (res.ok) {
