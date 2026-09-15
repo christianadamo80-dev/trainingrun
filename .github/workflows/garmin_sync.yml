@@ -4,7 +4,7 @@ on:
   schedule:
     # Esegue il sync in automatico ogni 2 ore
     - cron: '0 */2 * * *'
-  workflow_dispatch: # Permette anche di avviarlo manualmente con un clic da GitHub
+  workflow_dispatch: # Permette di avviarlo manualmente con un clic da GitHub
 
 jobs:
   sync:
@@ -14,13 +14,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: setup-python@v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install Dependencies
         run: |
-          pip install garminconnect fitparse curl_cffi
+          pip install garminconnect fitparse curl_cffi garth
 
       - name: Run Garmin Sync
         env:
@@ -29,7 +29,7 @@ jobs:
         run: |
           python sync_garmin.py
 
-      - name: Commit & Push Nuove Attività
+      - name: Commit & Push Nuove Attivita
         run: |
           git config --global user.name "Garmin-Sync-Bot"
           git config --global user.email "bot@github.com"
