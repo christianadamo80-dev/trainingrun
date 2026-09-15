@@ -60,7 +60,20 @@
     .settings-bar { display: flex; gap: 12px; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
-
+/* BANNER NUOVA SOGLIA RILEVATA */
+<div id="thresholdAlert" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 12px 18px; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 1.3rem;">⚡</span>
+    <div>
+      <div style="font-weight: 700; font-size: 0.9rem; color: #fff;">Nuova Soglia Rilevata dalle tue corse!</div>
+      <div style="font-size: 0.8rem; color: var(--muted);" id="thresholdAlertText">rFTPa stimato: -- | LTHR stimato: --</div>
+    </div>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn-sync primary" onclick="applyDetectedThresholds()">Applica e Ricalcola</button>
+    <button class="btn-sync" onclick="document.getElementById('thresholdAlert').style.display='none'">Ignora</button>
+  </div>
+</div>
     /* TRAINING STATUS BANNER */
     .status-banner {
       background: linear-gradient(135deg, #151e2e 0%, #1e293b 100%);
