@@ -4,7 +4,10 @@ on:
   schedule:
     # Esegue il sync in automatico ogni 2 ore
     - cron: '0 */2 * * *'
-  workflow_dispatch: # Permette di avviarlo manualmente con un clic da GitHub
+  workflow_dispatch: # Avvio manuale con un clic
+
+permissions:
+  contents: write
 
 jobs:
   sync:
@@ -12,6 +15,9 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -31,7 +37,12 @@ jobs:
 
       - name: Commit & Push Nuove Attivita
         run: |
-          git config --global user.name "Garmin-Sync-Bot"
-          git config --global user.email "bot@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add activities.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-sync corse da Garmin Connect [skip ci]" && git push)
+          if git diff --staged --quiet; then
+            echo "Nessuna modifica da salvare."
+          else
+            git commit -m "Auto-sync corse da Garmin Connect [skip ci]"
+            git push origin HEAD
+          fi
