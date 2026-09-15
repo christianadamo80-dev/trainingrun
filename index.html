@@ -139,7 +139,18 @@
     .dropzone p { color: var(--muted); margin-top: 3px; font-size: 0.82rem; }
     input[type="file"] { display: none; }
 
-    /* Griglia Metriche Sessione */
+    /* Griglie & Cards */
+    .view-title-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111a28;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .view-title-bar h2 { font-size: 1.05rem; font-weight: 700; }
+
     .grid-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
     .card-title { font-size: 0.68rem; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
@@ -155,8 +166,8 @@
       .main-grid { grid-template-columns: 320px 1fr; }
     }
 
-    .activity-list-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; max-height: 820px; }
-    .activity-list-header { padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.88rem; }
+    .activity-list-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; max-height: 860px; }
+    .activity-list-header { padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; }
     .activity-items { overflow-y: auto; flex: 1; }
     .activity-row {
       padding: 10px 12px;
@@ -176,12 +187,10 @@
     .btn-del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 2px 6px; }
     .btn-del:hover { color: var(--danger); }
 
-    /* Trail & Terrain Split Table */
     .terrain-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left; margin-top: 6px; }
     .terrain-table th, .terrain-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
     .terrain-table th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.68rem; }
 
-    /* Mappa & Doppia Zona */
     .dashboard-secondary-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 14px; }
     @media (min-width: 860px) {
       .dashboard-secondary-grid { grid-template-columns: 1fr 1fr; }
@@ -195,7 +204,6 @@
     .zone-fill { height: 100%; border-radius: 6px; }
     .zone-meta { width: 85px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 
-    /* Note e RPE */
     .notes-box { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
     .notes-box textarea {
       background: var(--bg);
@@ -216,10 +224,9 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Piattaforma avanzata: NGP, VAM, Km-Sforzo, Decoupling aerobico, MMP, Zone & Drive Sync</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Panoramica Storica Carriera & Analisi Singola Sessione</p>
     </div>
 
-    <!-- Sincronizzazione Cloud Google Drive -->
     <div class="top-controls">
       <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()">
         <span>☁️ Connetti Google Drive</span>
@@ -248,7 +255,7 @@
     </div>
   </div>
 
-  <!-- Barra Impostazioni / Client ID -->
+  <!-- Barra Impostazioni -->
   <div class="settings-bar">
     <div>
       <label for="clientIdInput">Google OAuth Client ID:</label>
@@ -317,54 +324,68 @@
     </div>
   </div>
 
-  <!-- Split View -->
+  <!-- Split View Principale -->
   <div class="main-grid">
-    <!-- Logbook lista -->
+    <!-- Logbook lista a sinistra -->
     <div class="activity-list-card">
-      <div class="activity-list-header">Archivio Corse (<span id="actCount">0</span>)</div>
+      <div class="activity-list-header">
+        <span>Archivio Corse (<span id="actCount">0</span>)</span>
+        <button class="btn-sync" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showGlobalDashboard()">📊 Panoramica</button>
+      </div>
       <div class="activity-items" id="activityList">
         <p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente.</p>
       </div>
     </div>
 
-    <!-- Dettagli sessione -->
+    <!-- Contenuto dinamico a destra: Globale vs Singola Sessione -->
     <div style="display: flex; flex-direction: column; gap: 14px;">
       
-      <!-- Prima fila metriche -->
+      <!-- Titolo Contesto / Switcher -->
+      <div class="view-title-bar">
+        <div>
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em;" id="viewContextLabel">PANORAMICA GENERALE</span>
+          <h2 id="viewContextTitle">Riepilogo Totale di Carriera</h2>
+        </div>
+        <button id="btnBackToGlobal" class="btn-sync" style="display: none;" onclick="showGlobalDashboard()">
+          ⬅️ Torna alla Panoramica Generale
+        </button>
+      </div>
+
+      <!-- Prima fila metriche (Totali o Sessione) -->
       <div class="grid-metrics">
         <div class="card">
-          <div class="card-title">Distanza & D+</div>
+          <div class="card-title" id="lblDist">Distanza & D+</div>
           <div class="card-val" id="valDist">--</div>
           <div class="card-sub" id="valElevation">D+ -- m | D- -- m</div>
         </div>
         <div class="card">
-          <div class="card-title">Km-Sforzo (ITRA/UTMB)</div>
+          <div class="card-title" id="lblKmEffort">Km-Sforzo (ITRA/UTMB)</div>
           <div class="card-val" id="valKmEffort" style="color: var(--accent-purple);">--</div>
-          <div class="card-sub">Dist + (D+ / 100)</div>
+          <div class="card-sub" id="subKmEffort">Dist + (D+ / 100)</div>
         </div>
         <div class="card">
-          <div class="card-title">Tempo Movimento</div>
+          <div class="card-title" id="lblTime">Tempo Totale</div>
           <div class="card-val" id="valTime">--</div>
-          <div class="card-sub" id="valPace">Passo: --</div>
+          <div class="card-sub" id="valPace">Passo Medio: --</div>
         </div>
         <div class="card">
-          <div class="card-title">NGP & IF</div>
+          <div class="card-title" id="lblNGP">NGP Medio & IF</div>
           <div class="card-val" id="valNGP" style="color: var(--accent-ctl);">--</div>
           <div class="card-sub" id="valIF">IF: --</div>
         </div>
         <div class="card">
-          <div class="card-title">Training Stress</div>
+          <div class="card-title" id="lblTSS">Training Stress Totale</div>
           <div class="card-val" id="valTSS" style="color: var(--accent-primary);">--</div>
-          <div class="card-sub">rTSS</div>
+          <div class="card-sub" id="subTSS">TSS Cumulato</div>
         </div>
       </div>
 
-      <!-- Seconda fila metriche avanzate (Trail, Cardio, Potenza, Decoupling) -->
+      <!-- Seconda fila metriche avanzate -->
       <div class="grid-metrics">
         <div class="card">
-          <div class="card-title">VAM Media Salita</div>
+          <div class="card-title" id="lblVAM">VAM Salita</div>
           <div class="card-val" id="valVAM" style="color: var(--accent-tsb);">--</div>
-          <div class="card-sub">m/h verticali</div>
+          <div class="card-sub" id="subVAM">m/h verticali</div>
         </div>
         <div class="card">
           <div class="card-title">Frequenza Cardiaca</div>
@@ -382,15 +403,15 @@
           <div class="card-sub" id="valNP">NP: -- W</div>
         </div>
         <div class="card">
-          <div class="card-title">Aerobic Decoupling</div>
+          <div class="card-title" id="lblDecoupling">Aerobic Decoupling</div>
           <div class="card-val" id="valDecoupling">--</div>
-          <div class="card-sub">Pw:Hr / Drift cardiaco</div>
+          <div class="card-sub" id="subDecoupling">Pw:Hr / Drift cardiaco</div>
         </div>
       </div>
 
-      <!-- Dettaglio Salita / Discesa / Piano -->
+      <!-- Dettaglio Terreno (Ripartizione Salita / Discesa / Piano) -->
       <div class="card" style="padding: 12px 14px;">
-        <div class="card-title">Ripartizione Pendenze (Salita / Discesa / Piano)</div>
+        <div class="card-title" id="terrainTitle">Ripartizione Terreno Globale (Tutte le corse)</div>
         <table class="terrain-table">
           <thead>
             <tr>
@@ -403,14 +424,14 @@
             </tr>
           </thead>
           <tbody id="terrainBreakdownBody">
-            <tr><td colspan="6" style="color: var(--muted); text-align: center;">Carica una corsa per visualizzare il breakdown</td></tr>
+            <tr><td colspan="6" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Grafico Telemetria Multi-Asse -->
+      <!-- Grafico Principale (Volumi Mensili se Globale / Telemetria se Singola Corsa) -->
       <div class="chart-box">
-        <h2 id="workoutChartTitle">Dettaglio Corsa (Altimetria, Passo, NGP, Cardio, Potenza)</h2>
+        <h2 id="workoutChartTitle">Volumi Mensili Aggregati (Km & D+)</h2>
         <div class="chart-canvas">
           <canvas id="workoutChart"></canvas>
         </div>
@@ -418,13 +439,13 @@
 
       <!-- Mappa e Mean Max Table -->
       <div class="dashboard-secondary-grid">
-        <div class="chart-box" style="padding: 12px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 8px;">Mappa Percorso (Sincronizzata col cursore)</h2>
+        <div class="chart-box" style="padding: 12px;" id="mapBoxContainer">
+          <h2 style="font-size: 0.84rem; margin-bottom: 8px;" id="mapTitle">Mappa Ultimo Percorso Registrato</h2>
           <div id="map"></div>
         </div>
 
         <div class="chart-box" style="padding: 14px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 8px;">Migliori Finestre di Prestazione (Mean Max)</h2>
+          <h2 style="font-size: 0.84rem; margin-bottom: 8px;" id="meanMaxTitle">Record Assoluti di Prestazione (All-Time Mean Max)</h2>
           <table class="terrain-table">
             <thead>
               <tr>
@@ -435,7 +456,7 @@
               </tr>
             </thead>
             <tbody id="meanMaxTableBody">
-              <tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato disponibile</td></tr>
+              <tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>
             </tbody>
           </table>
         </div>
@@ -444,17 +465,17 @@
       <!-- Distribuzione Zone Passo & Cardio -->
       <div class="dashboard-secondary-grid">
         <div class="chart-box" style="padding: 14px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 10px;">Zone di Passo (rFTPa Coggan)</h2>
+          <h2 style="font-size: 0.84rem; margin-bottom: 10px;" id="paceZoneTitle">Distribuzione Zone Passo Totale</h2>
           <div class="zone-container" id="paceZonesContainer"></div>
         </div>
         <div class="chart-box" style="padding: 14px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 10px;">Zone Cardio (LTHR Friel)</h2>
+          <h2 style="font-size: 0.84rem; margin-bottom: 10px;" id="hrZoneTitle">Distribuzione Zone Cardio Totale</h2>
           <div class="zone-container" id="hrZonesContainer"></div>
         </div>
       </div>
 
-      <!-- Diario Allenamento, RPE e Note -->
-      <div class="card notes-box">
+      <!-- Diario Allenamento e Note (visibile solo su singola sessione) -->
+      <div class="card notes-box" id="notesBoxContainer" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span class="card-title">Note Sessione & Sforzo Percepito</span>
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -496,7 +517,7 @@
   let db = null;
 
   let activities = [];
-  let selectedActivityId = null;
+  let selectedActivityId = null; // null indica modalità Panoramica Globale
   let workoutChartInstance = null;
   let pmcChartInstance = null;
   let mapInstance = null;
@@ -561,7 +582,7 @@
   }
 
   // ==========================================
-  // 3. UTILITY DI CALCOLO E CONVERSIONE
+  // 3. UTILITY FORMATTAZIONE
   // ==========================================
   function parsePaceToSec(str) {
     const parts = (str || "04:15").split(':');
@@ -597,7 +618,7 @@
   }
 
   // ==========================================
-  // 4. PARSER .FIT & .GPX CON CADENZA E POTENZA
+  // 4. PARSER .FIT & .GPX
   // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
@@ -620,9 +641,7 @@
         }
 
         let points = [];
-        let totalDist = 0;
-        let totalElevationGain = 0;
-        let totalElevationLoss = 0;
+        let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
 
         for (let i = 0; i < data.records.length; i++) {
           const r = data.records[i];
@@ -668,9 +687,7 @@
     if (!trkpts.length) throw new Error("File GPX privo di punti traccia");
 
     let points = [];
-    let totalDist = 0;
-    let totalElevationGain = 0;
-    let totalElevationLoss = 0;
+    let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
 
     for (let i = 0; i < trkpts.length; i++) {
       const pt = trkpts[i];
@@ -701,7 +718,7 @@
   }
 
   // ==========================================
-  // 5. MOTORE MATEMATICO & ANALISI DETTAGLIATA
+  // 5. CALCOLO SESSIONE
   // ==========================================
   function processWorkout(raw, rFTPaSec, lthrVal) {
     const points = raw.points;
@@ -715,17 +732,13 @@
     let cadSum = 0, cadCount = 0, maxCad = 0;
     let powerSum = 0, powerCount = 0, power4Sum = 0;
 
-    // Ripartizione Terreno (Uphill / Downhill / Flat)
     let uphill = { dist: 0, time: 0, ele: 0 };
     let downhill = { dist: 0, time: 0, ele: 0 };
     let flat = { dist: 0, time: 0, ele: 0 };
 
-    // Zone Passo (Coggan)
     let paceZoneTimes = [0, 0, 0, 0, 0];
-    // Zone Cardio (Friel LTHR: Z1 <85%, Z2 85-89%, Z3 90-94%, Z4 95-99%, Z5 >=100%)
     let hrZoneTimes = [0, 0, 0, 0, 0];
 
-    // Per calcolo Decoupling (prima metà vs seconda metà)
     let halfTime = totalTimeSec / 2;
     let p1Sum = 0, hr1Sum = 0, c1 = 0;
     let p2Sum = 0, hr2Sum = 0, c2 = 0;
@@ -744,7 +757,6 @@
       const ngpSpeed = speed * costRatio;
       weightedPows.push(Math.pow(ngpSpeed, 4));
 
-      // Cardio
       const hr = points[i].hr;
       if (hr) {
         hrSum += hr;
@@ -759,7 +771,6 @@
         else hrZoneTimes[4] += dt;
       }
 
-      // Cadenza
       const cad = points[i].cadence;
       if (cad) {
         cadSum += cad;
@@ -767,7 +778,6 @@
         if (cad > maxCad) maxCad = cad;
       }
 
-      // Potenza
       const pwr = points[i].power;
       if (pwr) {
         powerSum += pwr;
@@ -775,7 +785,6 @@
         power4Sum += Math.pow(pwr, 4);
       }
 
-      // Terreno
       if (slope > 0.02) {
         uphill.dist += dx; uphill.time += dt; uphill.ele += Math.max(dz, 0);
       } else if (slope < -0.02) {
@@ -784,7 +793,6 @@
         flat.dist += dx; flat.time += dt; flat.ele += Math.abs(dz);
       }
 
-      // Zone Passo
       const speedRatio = speed / rFTPaSpeed;
       if (speedRatio < 0.75) paceZoneTimes[0] += dt;
       else if (speedRatio < 0.90) paceZoneTimes[1] += dt;
@@ -792,7 +800,6 @@
       else if (speedRatio < 1.10) paceZoneTimes[3] += dt;
       else paceZoneTimes[4] += dt;
 
-      // Accumulo Decoupling
       const curElapsed = (points[i].time - points[0].time) / 1000;
       if (hr && speed > 0.5) {
         if (curElapsed <= halfTime) {
@@ -814,20 +821,15 @@
       });
     }
 
-    // NGP & Stress Score
     const avgPow4 = weightedPows.reduce((a, b) => a + b, 0) / weightedPows.length;
     const globalNgpSpeed = Math.pow(avgPow4, 0.25);
     const globalNgpSec = 1000 / globalNgpSpeed;
     const intensityFactor = globalNgpSpeed / rFTPaSpeed;
     const rTSS = (totalTimeSec * globalNgpSpeed * intensityFactor) / (rFTPaSpeed * 3600) * 100;
 
-    // VAM Media in Salita (m/h)
     const vam = uphill.time > 60 ? Math.round((uphill.ele / uphill.time) * 3600) : 0;
-
-    // Km-Sforzo ITRA / UTMB
     const kmEffort = (raw.totalDist / 1000) + (raw.totalElevationGain / 100);
 
-    // Decoupling Aerobico (Pw:Hr / Pa:Hr)
     let decoupling = null;
     if (c1 > 60 && c2 > 60) {
       const ef1 = (p1Sum / c1) / (hr1Sum / c1);
@@ -835,7 +837,6 @@
       decoupling = Math.round(((ef1 - ef2) / ef1) * 1000) / 10;
     }
 
-    // Mean Max (1m, 5m, 10m, 20m, 30m, 60m)
     const meanMaxWindows = [60, 300, 600, 1200, 1800, 3600];
     const meanMaxResults = meanMaxWindows.map(sec => {
       const res = getBestMeanMetrics(points, sec);
@@ -880,7 +881,6 @@
     };
   }
 
-  // Mean Max Window Calculation
   function getBestMeanMetrics(points, durationSec) {
     if (!points || points.length < 2) return null;
     let bestSpeed = 0, bestHR = null, bestPower = null;
@@ -911,7 +911,7 @@
   }
 
   // ==========================================
-  // 6. STIMA SOGLIA AUTOMATICA
+  // 6. STIMA SOGLIA
   // ==========================================
   function detectThresholds(acts) {
     if (!acts || !acts.length) return null;
@@ -978,13 +978,15 @@
     }
 
     if (selectedActivityId) selectActivity(selectedActivityId);
+    else showGlobalDashboard();
+
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
   }
 
   // ==========================================
-  // 7. PMC & TRAINING STATUS
+  // 7. PMC & BANNER STATUS
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1080,9 +1082,6 @@
     }
   }
 
-  // ==========================================
-  // 8. GRAFICI, MAPPA & BREAKDOWN
-  // ==========================================
   function renderPMCChart(pmcData) {
     const ctx = document.getElementById('pmcChart').getContext('2d');
     if (pmcChartInstance) pmcChartInstance.destroy();
@@ -1111,9 +1110,380 @@
     });
   }
 
+  // ==========================================
+  // 8. VISTA GLOBALE (PANORAMICA TUTTI GLI ALLENAMENTI)
+  // ==========================================
+  function showGlobalDashboard() {
+    selectedActivityId = null;
+    renderActivityList();
+
+    // UI Header View
+    document.getElementById('viewContextLabel').innerText = "PANORAMICA GENERALE";
+    document.getElementById('viewContextTitle').innerText = "Riepilogo Totale di Carriera";
+    document.getElementById('btnBackToGlobal').style.display = "none";
+    document.getElementById('notesBoxContainer').style.display = "none";
+    document.getElementById('mapBoxContainer').style.display = "block";
+    document.getElementById('mapTitle').innerText = "Mappa Ultima Sessione Registrata";
+    document.getElementById('workoutChartTitle').innerText = "Volumi Mensili Storici (Km & Dislivello D+)";
+
+    if (!activities.length) {
+      document.getElementById('valDist').innerText = "--";
+      document.getElementById('valElevation').innerText = "D+ -- m | D- -- m";
+      document.getElementById('valKmEffort').innerText = "--";
+      document.getElementById('valTime').innerText = "--";
+      document.getElementById('valPace').innerText = "Passo: --";
+      document.getElementById('valNGP').innerText = "--";
+      document.getElementById('valIF').innerText = "IF: --";
+      document.getElementById('valTSS').innerText = "--";
+      document.getElementById('valVAM').innerText = "--";
+      document.getElementById('valHR').innerText = "--";
+      document.getElementById('valHRMax').innerText = "Max: --";
+      document.getElementById('valCadence').innerText = "--";
+      document.getElementById('valCadenceMax').innerText = "Max: --";
+      document.getElementById('valPower').innerText = "--";
+      document.getElementById('valNP').innerText = "NP: --";
+      document.getElementById('valDecoupling').innerText = "--";
+      return;
+    }
+
+    // Aggregazione totali
+    let totDist = 0, totDPlus = 0, totDLoss = 0, totTime = 0, totTSS = 0;
+    let totPaceTimes = [0, 0, 0, 0, 0];
+    let totHrTimes = [0, 0, 0, 0, 0];
+    let uTot = { dist: 0, time: 0, ele: 0 };
+    let dTot = { dist: 0, time: 0, ele: 0 };
+    let fTot = { dist: 0, time: 0, ele: 0 };
+
+    let hrSum = 0, hrCount = 0, globalMaxHR = 0;
+    let cadSum = 0, cadCount = 0, globalMaxCad = 0;
+    let pwrSum = 0, pwrCount = 0;
+    let maxVAM = 0;
+
+    // Record storici Mean Max
+    let allTimeMeanMax = {
+      60: { speed: 0, hr: null, power: null },
+      300: { speed: 0, hr: null, power: null },
+      600: { speed: 0, hr: null, power: null },
+      1200: { speed: 0, hr: null, power: null },
+      1800: { speed: 0, hr: null, power: null },
+      3600: { speed: 0, hr: null, power: null }
+    };
+
+    activities.forEach(a => {
+      totDist += a.totalDistKm;
+      totDPlus += a.totalElevationGain;
+      totDLoss += a.totalElevationLoss;
+      totTime += a.totalTimeSec;
+      totTSS += a.rTSS;
+
+      if (a.vam > maxVAM) maxVAM = a.vam;
+      if (a.avgHR) { hrSum += a.avgHR; hrCount++; }
+      if (a.maxHR && a.maxHR > globalMaxHR) globalMaxHR = a.maxHR;
+      if (a.avgCadence) { cadSum += a.avgCadence; cadCount++; }
+      if (a.maxCadence && a.maxCadence > globalMaxCad) globalMaxCad = a.maxCadence;
+      if (a.avgPower) { pwrSum += a.avgPower; pwrCount++; }
+
+      if (a.uphill) { uTot.dist += a.uphill.dist; uTot.time += a.uphill.time; uTot.ele += a.uphill.ele; }
+      if (a.downhill) { dTot.dist += a.downhill.dist; dTot.time += a.downhill.time; dTot.ele += a.downhill.ele; }
+      if (a.flat) { fTot.dist += a.flat.dist; fTot.time += a.flat.time; fTot.ele += a.flat.ele; }
+
+      if (a.paceZoneTimes) {
+        a.paceZoneTimes.forEach((t, i) => totPaceTimes[i] += t);
+      }
+      if (a.hrZoneTimes) {
+        a.hrZoneTimes.forEach((t, i) => totHrTimes[i] += t);
+      }
+
+      // Check Mean Max Records
+      if (a.meanMaxResults) {
+        a.meanMaxResults.forEach(m => {
+          if (m.paceSec && (!allTimeMeanMax[m.sec].speed || (1000 / m.paceSec) > allTimeMeanMax[m.sec].speed)) {
+            allTimeMeanMax[m.sec].speed = 1000 / m.paceSec;
+            allTimeMeanMax[m.sec].hr = m.hr;
+            allTimeMeanMax[m.sec].power = m.power;
+          }
+        });
+      }
+    });
+
+    const totKmEffort = totDist + (totDPlus / 100);
+    const avgGlobalPaceSec = totDist > 0 ? (totTime / totDist) : 0;
+
+    // Aggiorna card numeriche in modalità globale
+    document.getElementById('lblDist').innerText = "Distanza & Dislivello Totale";
+    document.getElementById('valDist').innerText = `${totDist.toFixed(1)} km`;
+    document.getElementById('valElevation').innerText = `D+ ${totDPlus}m | D- ${totDLoss}m`;
+
+    document.getElementById('lblKmEffort').innerText = "Km-Sforzo Totali";
+    document.getElementById('valKmEffort').innerText = `${Math.round(totKmEffort)} km`;
+    document.getElementById('subKmEffort').innerText = `Carriera aggregata`;
+
+    document.getElementById('lblTime').innerText = "Tempo Totale Corsa";
+    document.getElementById('valTime').innerText = formatDuration(totTime);
+    document.getElementById('valPace').innerText = `Passo Medio: ${formatSecToPace(avgGlobalPaceSec)}`;
+
+    document.getElementById('lblNGP').innerText = "Sessioni Totali";
+    document.getElementById('valNGP').innerText = activities.length;
+    document.getElementById('valIF').innerText = `Media: ${(totDist / activities.length).toFixed(1)} km/uscita`;
+
+    document.getElementById('lblTSS').innerText = "Training Stress Totale";
+    document.getElementById('valTSS').innerText = Math.round(totTSS);
+    document.getElementById('subTSS').innerText = `TSS Cumulato`;
+
+    document.getElementById('lblVAM').innerText = "VAM Record Salita";
+    document.getElementById('valVAM').innerText = maxVAM ? `${maxVAM} m/h` : '--';
+    document.getElementById('subVAM').innerText = `Miglior VAM registrata`;
+
+    document.getElementById('valHR').innerText = hrCount ? `${Math.round(hrSum / hrCount)} bpm` : '--';
+    document.getElementById('valHRMax').innerText = globalMaxHR ? `Max Assoluto: ${globalMaxHR} bpm` : 'Max: --';
+
+    document.getElementById('valCadence').innerText = cadCount ? `${Math.round(cadSum / cadCount)} spm` : '--';
+    document.getElementById('valCadenceMax').innerText = globalMaxCad ? `Max: ${globalMaxCad} spm` : 'Max: --';
+
+    document.getElementById('valPower').innerText = pwrCount ? `${Math.round(pwrSum / pwrCount)} W` : '--';
+    document.getElementById('valNP').innerText = 'NP: --';
+
+    document.getElementById('lblDecoupling').innerText = "Corse Archiviate";
+    document.getElementById('valDecoupling').innerText = `${activities.length} file`;
+    document.getElementById('valDecoupling').style.color = "var(--text)";
+    document.getElementById('subDecoupling').innerText = `Nel tuo database locale & cloud`;
+
+    // Ripartizione terreno globale
+    renderCustomTerrainTable(uTot, dTot, fTot, "Ripartizione Terreno Globale (Tutte le corse)");
+
+    // Grafico Volumi Mensili
+    renderMonthlyVolumeChart(activities);
+
+    // Mappa ultima sessione
+    const sorted = [...activities].sort((a, b) => b.startTime - a.startTime);
+    if (sorted.length) initOrUpdateMap(sorted[0]);
+
+    // Mean Max All-Time
+    renderAllTimeMeanMaxTable(allTimeMeanMax);
+
+    // Zone Totali
+    renderDualZonesDirect(totPaceTimes, totHrTimes, "Distribuzione Zone Passo Totale", "Distribuzione Zone Cardio Totale");
+  }
+
+  // ==========================================
+  // 9. VISTA SINGOLA SESSIONE (AL CLIC SULLA LISTA)
+  // ==========================================
+  function selectActivity(id) {
+    selectedActivityId = id;
+    const act = activities.find(a => a.id === id);
+    if (!act) return;
+
+    renderActivityList();
+
+    // UI Header Context
+    document.getElementById('viewContextLabel').innerText = `DETTAGLIO SESSIONE (${act.dateStr})`;
+    document.getElementById('viewContextTitle').innerText = act.title;
+    document.getElementById('btnBackToGlobal').style.display = "flex";
+    document.getElementById('notesBoxContainer').style.display = "flex";
+    document.getElementById('mapBoxContainer').style.display = "block";
+    document.getElementById('mapTitle').innerText = `Mappa Percorso: ${act.title}`;
+
+    // Aggiorna card numeriche per la sessione
+    document.getElementById('lblDist').innerText = "Distanza & D+";
+    document.getElementById('valDist').innerText = `${act.totalDistKm.toFixed(2)} km`;
+    document.getElementById('valElevation').innerText = `D+ ${act.totalElevationGain}m | D- ${act.totalElevationLoss}m`;
+
+    document.getElementById('lblKmEffort').innerText = "Km-Sforzo (ITRA/UTMB)";
+    document.getElementById('valKmEffort').innerText = `${act.kmEffort} km`;
+    document.getElementById('subKmEffort').innerText = "Dist + (D+ / 100)";
+
+    document.getElementById('lblTime').innerText = "Tempo Movimento";
+    document.getElementById('valTime').innerText = formatDuration(act.totalTimeSec);
+    document.getElementById('valPace').innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
+
+    document.getElementById('lblNGP').innerText = "NGP & IF";
+    document.getElementById('valNGP').innerText = formatSecToPace(act.globalNgpSec);
+    document.getElementById('valIF').innerText = `IF: ${act.intensityFactor.toFixed(2)}`;
+
+    document.getElementById('lblTSS').innerText = "Training Stress";
+    document.getElementById('valTSS').innerText = act.rTSS;
+    document.getElementById('subTSS').innerText = "rTSS";
+
+    document.getElementById('lblVAM').innerText = "VAM Media Salita";
+    document.getElementById('valVAM').innerText = act.vam ? `${act.vam} m/h` : '--';
+    document.getElementById('subVAM').innerText = "m/h verticali";
+
+    document.getElementById('valHR').innerText = act.avgHR ? `${act.avgHR} bpm` : '--';
+    document.getElementById('valHRMax').innerText = act.maxHR ? `Max: ${act.maxHR} bpm` : 'Max: --';
+
+    document.getElementById('valCadence').innerText = act.avgCadence ? `${act.avgCadence} spm` : '--';
+    document.getElementById('valCadenceMax').innerText = act.maxCadence ? `Max: ${act.maxCadence} spm` : 'Max: --';
+
+    document.getElementById('valPower').innerText = act.avgPower ? `${act.avgPower} W` : '--';
+    document.getElementById('valNP').innerText = act.npPower ? `NP: ${act.npPower} W` : 'NP: --';
+
+    document.getElementById('lblDecoupling').innerText = "Aerobic Decoupling";
+    if (act.decoupling !== null) {
+      document.getElementById('valDecoupling').innerText = `${act.decoupling > 0 ? '+' : ''}${act.decoupling}%`;
+      document.getElementById('valDecoupling').style.color = Math.abs(act.decoupling) <= 5 ? 'var(--accent-primary)' : 'var(--accent-atl)';
+    } else {
+      document.getElementById('valDecoupling').innerText = '--';
+      document.getElementById('valDecoupling').style.color = 'var(--text)';
+    }
+    document.getElementById('subDecoupling').innerText = "Pw:Hr / Drift cardiaco";
+
+    // Note e RPE
+    document.getElementById('actRPE').value = act.rpe || "";
+    document.getElementById('actNotes').value = act.notes || "";
+
+    // Grafico telemetria specifica
+    renderWorkoutChart(act);
+    initOrUpdateMap(act);
+    renderCustomTerrainTable(act.uphill, act.downhill, act.flat, `Ripartizione Terreno (${act.title})`);
+    renderMeanMaxTable(act);
+    renderDualZonesDirect(act.paceZoneTimes, act.hrZoneTimes, "Zone di Passo Sessione", "Zone Cardio Sessione");
+  }
+
+  // ==========================================
+  // 10. RENDERING TABELLE E ZONE
+  // ==========================================
+  function renderCustomTerrainTable(u, d, f, title) {
+    document.getElementById('terrainTitle').innerText = title;
+    const tbody = document.getElementById('terrainBreakdownBody');
+
+    const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
+    const dPace = d.dist > 10 ? formatSecToPace(d.time / (d.dist / 1000)) : "--";
+    const fPace = f.dist > 10 ? formatSecToPace(f.time / (f.dist / 1000)) : "--";
+
+    const uVam = u.time > 60 ? Math.round((u.ele / u.time) * 3600) + " m/h" : "--";
+    const dVam = d.time > 60 ? Math.round((d.ele / d.time) * 3600) + " m/h" : "--";
+
+    tbody.innerHTML = `
+      <tr>
+        <td style="font-weight: 600; color: #f87171;">🧗 Salita (> +2%)</td>
+        <td>${(u.dist / 1000).toFixed(2)} km</td>
+        <td>${formatDuration(u.time)}</td>
+        <td>+${Math.round(u.ele)} m</td>
+        <td>${uPace}</td>
+        <td style="color: var(--accent-tsb); font-weight: 600;">${uVam}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600; color: #38bdf8;">🏃 Piano (-2% / +2%)</td>
+        <td>${(f.dist / 1000).toFixed(2)} km</td>
+        <td>${formatDuration(f.time)}</td>
+        <td>±${Math.round(f.ele)} m</td>
+        <td>${fPace}</td>
+        <td>--</td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600; color: #10b981;">⛷️ Discesa (< -2%)</td>
+        <td>${(d.dist / 1000).toFixed(2)} km</td>
+        <td>${formatDuration(d.time)}</td>
+        <td>-${Math.round(d.ele)} m</td>
+        <td>${dPace}</td>
+        <td>${dVam}</td>
+      </tr>
+    `;
+  }
+
+  function renderMeanMaxTable(act) {
+    document.getElementById('meanMaxTitle').innerText = `Migliori Finestre Sessione: ${act.title}`;
+    const tbody = document.getElementById('meanMaxTableBody');
+    if (!act.meanMaxResults || !act.meanMaxResults.length) {
+      tbody.innerHTML = `<tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = act.meanMaxResults.map(m => `
+      <tr>
+        <td style="font-weight: 600;">${m.label}</td>
+        <td style="color: var(--accent-ctl); font-weight: 600;">${formatSecToPace(m.paceSec)}</td>
+        <td style="color: #ef4444;">${m.hr ? m.hr + ' bpm' : '--'}</td>
+        <td style="color: #c084fc;">${m.power ? m.power + ' W' : '--'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAllTimeMeanMaxTable(allTimeMap) {
+    document.getElementById('meanMaxTitle').innerText = "Record Assoluti di Prestazione (All-Time Mean Max)";
+    const tbody = document.getElementById('meanMaxTableBody');
+    const windows = [
+      { sec: 60, label: "1m" },
+      { sec: 300, label: "5m" },
+      { sec: 600, label: "10m" },
+      { sec: 1200, label: "20m" },
+      { sec: 1800, label: "30m" },
+      { sec: 3600, label: "60m" }
+    ];
+
+    tbody.innerHTML = windows.map(w => {
+      const rec = allTimeMap[w.sec];
+      const paceStr = rec.speed > 0 ? formatSecToPace(Math.round(1000 / rec.speed)) : "--";
+      const hrStr = rec.hr ? `${rec.hr} bpm` : "--";
+      const pwrStr = rec.power ? `${rec.power} W` : "--";
+
+      return `
+        <tr>
+          <td style="font-weight: 600;">${w.label}</td>
+          <td style="color: var(--accent-ctl); font-weight: 600;">${paceStr}</td>
+          <td style="color: #ef4444;">${hrStr}</td>
+          <td style="color: #c084fc;">${pwrStr}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderDualZonesDirect(paceZoneTimes, hrZoneTimes, paceTitle, hrTitle) {
+    document.getElementById('paceZoneTitle').innerText = paceTitle;
+    document.getElementById('hrZoneTitle').innerText = hrTitle;
+
+    const paceCont = document.getElementById('paceZonesContainer');
+    const paceLabels = [
+      { name: "Z1 Recupero", color: "var(--z1)" },
+      { name: "Z2 Aerobico", color: "var(--z2)" },
+      { name: "Z3 Tempo", color: "var(--z3)" },
+      { name: "Z4 Soglia", color: "var(--z4)" },
+      { name: "Z5 VO2max+", color: "var(--z5)" }
+    ];
+    const totPace = paceZoneTimes ? paceZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
+    paceCont.innerHTML = paceLabels.map((z, idx) => {
+      const t = paceZoneTimes ? (paceZoneTimes[idx] || 0) : 0;
+      const pct = Math.round((t / totPace) * 100);
+      return `
+        <div class="zone-bar-wrapper">
+          <div class="zone-label">${z.name}</div>
+          <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
+          <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
+        </div>
+      `;
+    }).join('');
+
+    const hrCont = document.getElementById('hrZonesContainer');
+    const hrLabels = [
+      { name: "Z1 Riposo/Rec.", color: "var(--z1)" },
+      { name: "Z2 Fondo Lento", color: "var(--z2)" },
+      { name: "Z3 Fondo Medio", color: "var(--z3)" },
+      { name: "Z4 Soglia Anaer.", color: "var(--z4)" },
+      { name: "Z5 Sopra Soglia", color: "var(--z5)" }
+    ];
+    const totHR = hrZoneTimes ? hrZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
+    if (hrZoneTimes && hrZoneTimes.some(v => v > 0)) {
+      hrCont.innerHTML = hrLabels.map((z, idx) => {
+        const t = hrZoneTimes[idx] || 0;
+        const pct = Math.round((t / totHR) * 100);
+        return `
+          <div class="zone-bar-wrapper">
+            <div class="zone-label">${z.name}</div>
+            <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
+            <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      hrCont.innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Dati cardio non presenti.</p>`;
+    }
+  }
+
+  // ==========================================
+  // 11. GRAFICI: TELEMETRIA vs VOLUMI MENSILI
+  // ==========================================
   function renderWorkoutChart(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
-    document.getElementById('workoutChartTitle').innerText = `Dettaglio: ${act.title} (${act.dateStr})`;
+    document.getElementById('workoutChartTitle').innerText = `Telemetria Corsa: ${act.title} (${act.dateStr})`;
 
     const step = Math.max(1, Math.floor(act.points.length / 280));
     const sampled = act.points.filter((_, idx) => idx % step === 0);
@@ -1175,7 +1545,72 @@
     });
   }
 
+  function renderMonthlyVolumeChart(acts) {
+    const ctx = document.getElementById('workoutChart').getContext('2d');
+    if (workoutChartInstance) workoutChartInstance.destroy();
+
+    // Raggruppa per Anno-Mese (YYYY-MM)
+    let monthly = {};
+    acts.forEach(a => {
+      const monthKey = a.dateStr.substring(0, 7);
+      if (!monthly[monthKey]) monthly[monthKey] = { dist: 0, ele: 0 };
+      monthly[monthKey].dist += a.totalDistKm;
+      monthly[monthKey].ele += a.totalElevationGain;
+    });
+
+    const sortedMonths = Object.keys(monthly).sort();
+    const kmData = sortedMonths.map(m => Math.round(monthly[m].dist));
+    const eleData = sortedMonths.map(m => Math.round(monthly[m].ele));
+
+    workoutChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sortedMonths,
+        datasets: [
+          {
+            label: 'Chilometri (km)',
+            data: kmData,
+            backgroundColor: 'rgba(56, 189, 248, 0.65)',
+            borderColor: '#38bdf8',
+            borderWidth: 1,
+            yAxisID: 'yKm'
+          },
+          {
+            label: 'Dislivello D+ (m)',
+            data: eleData,
+            backgroundColor: 'rgba(245, 158, 11, 0.55)',
+            borderColor: '#f59e0b',
+            borderWidth: 1,
+            yAxisID: 'yEle'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { grid: { color: '#1a2333' }, ticks: { color: '#8493a8' } },
+          yKm: {
+            position: 'left',
+            grid: { color: '#243247' },
+            ticks: { color: '#38bdf8', callback: v => v + ' km' }
+          },
+          yEle: {
+            position: 'right',
+            grid: { display: false },
+            ticks: { color: '#f59e0b', callback: v => v + ' m' }
+          }
+        }
+      }
+    });
+  }
+
+  // ==========================================
+  // 12. MAPPA & NOTE
+  // ==========================================
   function initOrUpdateMap(act) {
+    if (!act || !act.points || !act.points.length) return;
     const latLngs = act.points.map(p => [p.lat, p.lon]);
     if (!latLngs.length) return;
 
@@ -1199,157 +1634,6 @@
       mapCursorMarker.setLatLng(latLngs[0]);
     }
     mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [20, 20] });
-  }
-
-  function renderTerrainBreakdown(act) {
-    const tbody = document.getElementById('terrainBreakdownBody');
-    const u = act.uphill, d = act.downhill, f = act.flat;
-
-    const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
-    const dPace = d.dist > 10 ? formatSecToPace(d.time / (d.dist / 1000)) : "--";
-    const fPace = f.dist > 10 ? formatSecToPace(f.time / (f.dist / 1000)) : "--";
-
-    const uVam = u.time > 60 ? Math.round((u.ele / u.time) * 3600) + " m/h" : "--";
-    const dVam = d.time > 60 ? Math.round((d.ele / d.time) * 3600) + " m/h" : "--";
-
-    tbody.innerHTML = `
-      <tr>
-        <td style="font-weight: 600; color: #f87171;">🧗 Salita (> +2%)</td>
-        <td>${(u.dist / 1000).toFixed(2)} km</td>
-        <td>${formatDuration(u.time)}</td>
-        <td>+${Math.round(u.ele)} m</td>
-        <td>${uPace}</td>
-        <td style="color: var(--accent-tsb); font-weight: 600;">${uVam}</td>
-      </tr>
-      <tr>
-        <td style="font-weight: 600; color: #38bdf8;">🏃 Piano (-2% / +2%)</td>
-        <td>${(f.dist / 1000).toFixed(2)} km</td>
-        <td>${formatDuration(f.time)}</td>
-        <td>±${Math.round(f.ele)} m</td>
-        <td>${fPace}</td>
-        <td>--</td>
-      </tr>
-      <tr>
-        <td style="font-weight: 600; color: #10b981;">⛷️ Discesa (< -2%)</td>
-        <td>${(d.dist / 1000).toFixed(2)} km</td>
-        <td>${formatDuration(d.time)}</td>
-        <td>-${Math.round(d.ele)} m</td>
-        <td>${dPace}</td>
-        <td>${dVam}</td>
-      </tr>
-    `;
-  }
-
-  function renderMeanMaxTable(act) {
-    const tbody = document.getElementById('meanMaxTableBody');
-    if (!act.meanMaxResults || !act.meanMaxResults.length) {
-      tbody.innerHTML = `<tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = act.meanMaxResults.map(m => `
-      <tr>
-        <td style="font-weight: 600;">${m.label}</td>
-        <td style="color: var(--accent-ctl); font-weight: 600;">${formatSecToPace(m.paceSec)}</td>
-        <td style="color: #ef4444;">${m.hr ? m.hr + ' bpm' : '--'}</td>
-        <td style="color: #c084fc;">${m.power ? m.power + ' W' : '--'}</td>
-      </tr>
-    `).join('');
-  }
-
-  function renderDualZones(act) {
-    // Zone Passo
-    const paceCont = document.getElementById('paceZonesContainer');
-    const paceLabels = [
-      { name: "Z1 Recupero", color: "var(--z1)" },
-      { name: "Z2 Aerobico", color: "var(--z2)" },
-      { name: "Z3 Tempo", color: "var(--z3)" },
-      { name: "Z4 Soglia", color: "var(--z4)" },
-      { name: "Z5 VO2max+", color: "var(--z5)" }
-    ];
-    const totPace = act.paceZoneTimes.reduce((a, b) => a + b, 0) || 1;
-    paceCont.innerHTML = paceLabels.map((z, idx) => {
-      const t = act.paceZoneTimes[idx] || 0;
-      const pct = Math.round((t / totPace) * 100);
-      return `
-        <div class="zone-bar-wrapper">
-          <div class="zone-label">${z.name}</div>
-          <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
-          <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
-        </div>
-      `;
-    }).join('');
-
-    // Zone Cardio
-    const hrCont = document.getElementById('hrZonesContainer');
-    const hrLabels = [
-      { name: "Z1 Riposo/Rec.", color: "var(--z1)" },
-      { name: "Z2 Fondo Lento", color: "var(--z2)" },
-      { name: "Z3 Fondo Medio", color: "var(--z3)" },
-      { name: "Z4 Soglia Anaer.", color: "var(--z4)" },
-      { name: "Z5 Sopra Soglia", color: "var(--z5)" }
-    ];
-    const totHR = act.hrZoneTimes ? act.hrZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
-    if (act.avgHR && act.hrZoneTimes) {
-      hrCont.innerHTML = hrLabels.map((z, idx) => {
-        const t = act.hrZoneTimes[idx] || 0;
-        const pct = Math.round((t / totHR) * 100);
-        return `
-          <div class="zone-bar-wrapper">
-            <div class="zone-label">${z.name}</div>
-            <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
-            <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      hrCont.innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Dati cardiaci non presenti per questa sessione.</p>`;
-    }
-  }
-
-  // ==========================================
-  // 9. LOGBOOK & NOTE
-  // ==========================================
-  function selectActivity(id) {
-    selectedActivityId = id;
-    const act = activities.find(a => a.id === id);
-    if (!act) return;
-
-    document.getElementById('valDist').innerText = `${act.totalDistKm.toFixed(2)} km`;
-    document.getElementById('valElevation').innerText = `D+ ${act.totalElevationGain}m | D- ${act.totalElevationLoss}m`;
-    document.getElementById('valKmEffort').innerText = `${act.kmEffort} km`;
-    document.getElementById('valTime').innerText = formatDuration(act.totalTimeSec);
-    document.getElementById('valPace').innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
-    document.getElementById('valNGP').innerText = formatSecToPace(act.globalNgpSec);
-    document.getElementById('valIF').innerText = `IF: ${act.intensityFactor.toFixed(2)}`;
-    document.getElementById('valTSS').innerText = act.rTSS;
-
-    document.getElementById('valVAM').innerText = act.vam ? `${act.vam} m/h` : '--';
-    document.getElementById('valHR').innerText = act.avgHR ? `${act.avgHR} bpm` : '--';
-    document.getElementById('valHRMax').innerText = act.maxHR ? `Max: ${act.maxHR} bpm` : 'Max: --';
-    document.getElementById('valCadence').innerText = act.avgCadence ? `${act.avgCadence} spm` : '--';
-    document.getElementById('valCadenceMax').innerText = act.maxCadence ? `Max: ${act.maxCadence} spm` : 'Max: --';
-    document.getElementById('valPower').innerText = act.avgPower ? `${act.avgPower} W` : '--';
-    document.getElementById('valNP').innerText = act.npPower ? `NP: ${act.npPower} W` : 'NP: --';
-    
-    if (act.decoupling !== null) {
-      document.getElementById('valDecoupling').innerText = `${act.decoupling > 0 ? '+' : ''}${act.decoupling}%`;
-      document.getElementById('valDecoupling').style.color = Math.abs(act.decoupling) <= 5 ? 'var(--accent-primary)' : 'var(--accent-atl)';
-    } else {
-      document.getElementById('valDecoupling').innerText = '--';
-      document.getElementById('valDecoupling').style.color = 'var(--text)';
-    }
-
-    // Note e RPE
-    document.getElementById('actRPE').value = act.rpe || "";
-    document.getElementById('actNotes').value = act.notes || "";
-
-    renderWorkoutChart(act);
-    initOrUpdateMap(act);
-    renderTerrainBreakdown(act);
-    renderMeanMaxTable(act);
-    renderDualZones(act);
-    renderActivityList();
   }
 
   async function saveActivityNotes() {
@@ -1395,10 +1679,11 @@
     activities = activities.filter(a => a.id !== id);
 
     if (selectedActivityId === id) {
-      selectedActivityId = activities.length ? activities[0].id : null;
-      if (selectedActivityId) selectActivity(selectedActivityId);
+      showGlobalDashboard();
+    } else {
+      renderActivityList();
+      showGlobalDashboard();
     }
-    renderActivityList();
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
@@ -1421,7 +1706,7 @@
     }
 
     if (activities.length) {
-      selectActivity(activities[activities.length - 1].id);
+      showGlobalDashboard();
       const pmc = computePMC(activities);
       renderPMCChart(pmc);
       updateTrainingStatusBanner(pmc, activities);
@@ -1430,7 +1715,7 @@
   }
 
   // ==========================================
-  // 10. GOOGLE DRIVE SYNC
+  // 13. GOOGLE DRIVE SYNC
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim();
@@ -1533,14 +1818,12 @@
           await dbSaveActivity(act);
         }
         activities = cloudActs;
-        renderActivityList();
-        if (activities.length) {
-          selectActivity(activities[0].id);
-          const pmc = computePMC(activities);
-          renderPMCChart(pmc);
-          updateTrainingStatusBanner(pmc, activities);
-          checkThresholdUpdates();
-        }
+        showGlobalDashboard();
+        const pmc = computePMC(activities);
+        renderPMCChart(pmc);
+        updateTrainingStatusBanner(pmc, activities);
+        checkThresholdUpdates();
+
         btn.innerText = "✅ Sincronizzato!";
         setTimeout(() => { btn.innerText = "⬇️ Sincronizza da Drive"; }, 2000);
       }
@@ -1551,7 +1834,7 @@
   }
 
   // ==========================================
-  // 11. EVENT LISTENERS
+  // 14. EVENT LISTENERS & AVVIO
   // ==========================================
   const dropzone = document.getElementById('dropzone');
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
@@ -1575,6 +1858,8 @@
       await dbSaveActivity(act);
     }
     if (selectedActivityId) selectActivity(selectedActivityId);
+    else showGlobalDashboard();
+
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
@@ -1588,9 +1873,10 @@
     }
 
     activities = await dbGetAllActivities();
-    renderActivityList();
+    // Default all'apertura: Panoramica Globale
+    showGlobalDashboard();
+
     if (activities.length) {
-      selectActivity(activities[activities.length - 1].id);
       const pmc = computePMC(activities);
       renderPMCChart(pmc);
       updateTrainingStatusBanner(pmc, activities);
