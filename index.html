@@ -655,7 +655,7 @@
   };
 
   // ==========================================
-  // 2. MODULO IA (GOOGLE GEMINI API)
+  // 2. MODULO IA (FALLBACK MULTI-ENDPOINT ROBUSTO)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -669,30 +669,43 @@
       return null;
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const payload = {
-      contents: [{
-        parts: [{ text: promptText }]
-      }],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 800
-      }
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 850 }
     };
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // Sequenza di endpoint con fallback automatico
+    const candidateEndpoints = [
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`
+    ];
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error?.message || "Errore nella chiamata all'IA");
+    let lastError = null;
+
+    for (const url of candidateEndpoints) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (answer) return answer;
+        } else {
+          const errData = await response.json();
+          lastError = errData.error?.message || `Errore HTTP ${response.status}`;
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
     }
 
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Nessun feedback generato.";
+    throw new Error(lastError || "Tutti gli endpoint Gemini hanno rifiutato la richiesta. Controlla la validità della chiave API.");
   }
 
   async function askAITrainingStatus() {
@@ -993,7 +1006,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 6. PARSER .FIT NATIVO (GARMIN SDK) & .GPX
+  // 6. PARSER .FIT NATIVO & .GPX
   // ==========================================
   async function parseFile(file) {
     if (file.name.toLowerCase().endsWith('.fit')) {
