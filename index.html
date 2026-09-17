@@ -414,11 +414,11 @@
     <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
   </div>
 
-  <!-- Upload GPX / FIT Manuale -->
+  <!-- Upload GPX / FIT / JSON Manuale -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-    <h3>Carica manualmente corse (.FIT o .GPX)</h3>
-    <p>Trascina qui i tuoi file o lascia che GitHub Actions li sincronizzi in automatico</p>
-    <input type="file" id="fileInput" accept=".fit,.gpx" multiple>
+    <h3>Carica sessioni (.FIT, .GPX o .JSON)</h3>
+    <p>Trascina qui i tuoi file dall'orologio o i backup JSON del logbook</p>
+    <input type="file" id="fileInput" accept=".fit,.gpx,.json" multiple>
   </div>
 
   <!-- PMC Chart -->
@@ -662,7 +662,7 @@
   };
 
   // ==========================================
-  // 2. MODULO IA (GOOGLE GEMINI - CONCATENAZIONE COMPLETA PARTS & MARKED)
+  // 2. MODULO IA (FALLBACK MULTI-MODELLO ANTI-OVERLOAD)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -676,7 +676,13 @@
       return null;
     }
 
-    let targetModel = "gemini-3.6-flash";
+    let candidateModels = [
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+      "gemini-1.5-flash",
+      "gemini-1.5-pro"
+    ];
+
     try {
       const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
       if (listRes.ok) {
@@ -685,17 +691,12 @@
           .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
           .map(m => m.name.replace(/^models\//, ''));
 
-        targetModel = available.find(m => m.includes("3.6-flash")) 
-                   || available.find(m => m.includes("flash")) 
-                   || available.find(m => m.includes("pro")) 
-                   || available[0]
-                   || "gemini-3.6-flash";
+        candidateModels = [...new Set([...candidateModels, ...available])];
       }
     } catch (e) {
-      console.warn("Impossibile recuperare ListModels, uso target di default", e);
+      console.warn("Impossibile contattare ListModels, procedo con i candidati predefiniti", e);
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
       generationConfig: { 
@@ -704,43 +705,50 @@
       }
     };
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let lastErrorMsg = "";
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error?.message || `Errore HTTP ${response.status}`);
+    for (const model of candidateModels) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const candidate = data.candidates?.[0];
+          if (!candidate || !candidate.content || !candidate.content.parts) continue;
+
+          const fullText = candidate.content.parts
+            .filter(p => !p.thought && p.text)
+            .map(p => p.text)
+            .join('\n')
+            .trim();
+
+          const outText = fullText || candidate.content.parts.map(p => p.text || '').join('\n').trim();
+          if (!outText) continue;
+
+          if (window.marked && typeof window.marked.parse === 'function') {
+            return window.marked.parse(outText);
+          }
+          return outText
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+        } else {
+          const errData = await response.json();
+          lastErrorMsg = errData.error?.message || `Errore HTTP ${response.status}`;
+          console.warn(`Modello ${model} non disponibile:`, lastErrorMsg);
+        }
+      } catch (err) {
+        lastErrorMsg = err.message;
+        console.warn(`Tentativo con ${model} fallito:`, err);
+      }
     }
 
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    if (!candidate || !candidate.content || !candidate.content.parts) {
-      return "Nessuna risposta ricevuta dal modello.";
-    }
-
-    // Unisce tutti i pezzi di testo ignorando i blocchi di reasoning interno
-    const fullText = candidate.content.parts
-      .filter(p => !p.thought && p.text)
-      .map(p => p.text)
-      .join('\n')
-      .trim();
-
-    if (!fullText) {
-      return candidate.content.parts.map(p => p.text || '').join('\n').trim() || "Nessun feedback generato.";
-    }
-
-    // Converte il Markdown completo in HTML strutturato
-    if (window.marked && typeof window.marked.parse === 'function') {
-      return window.marked.parse(fullText);
-    }
-
-    return fullText
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
+    throw new Error(lastErrorMsg || "Nessun modello Gemini è attualmente accessibile. Riprova tra pochi istanti.");
   }
 
   async function askAITrainingStatus() {
@@ -1041,16 +1049,46 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 6. PARSER .FIT NATIVO & .GPX
+  // 6. PARSER .FIT NATIVO, .GPX E .JSON
   // ==========================================
   async function parseFile(file) {
-    if (file.name.toLowerCase().endsWith('.fit')) {
+    const nameLower = file.name.toLowerCase();
+    if (nameLower.endsWith('.fit')) {
       const buffer = await file.arrayBuffer();
       return parseFIT(buffer, file.name);
+    } else if (nameLower.endsWith('.json')) {
+      const text = await file.text();
+      return parseJSONFile(text, file.name);
     } else {
       const text = await file.text();
       return parseGPX(text, file.name);
     }
+  }
+
+  function parseJSONFile(jsonText, fileName) {
+    let data;
+    try {
+      data = JSON.parse(jsonText);
+    } catch (e) {
+      throw new Error("File JSON non valido o corrotto.");
+    }
+
+    // Se è un export strutturato con activities e hrConfig
+    if (data && data.activities && Array.isArray(data.activities)) {
+      return { isCollection: true, list: data.activities, hrConfig: data.hrConfig };
+    }
+
+    // Se è un array di attività
+    if (Array.isArray(data)) {
+      return { isCollection: true, list: data };
+    }
+
+    // Se è una singola attività pre-processata o grezza
+    if (data && (data.points || data.totalDistKm || data.totalDist)) {
+      return data;
+    }
+
+    throw new Error("Il file JSON non contiene dati di attività compatibili.");
   }
 
   async function parseFIT(arrayBuffer, fileName) {
@@ -2121,9 +2159,37 @@ Fornisci un debriefing tecnico strutturato:
     for (const file of files) {
       try {
         const raw = await parseFile(file);
-        const processed = processWorkout(raw, rFTPaSec, lthrVal);
-        await dbSaveActivity(processed);
-        activities.push(processed);
+
+        if (raw.isCollection) {
+          if (raw.hrConfig) {
+            hrConfig = raw.hrConfig;
+            saveHRConfig();
+            updateHRZonesFromCurrentSettings();
+          }
+          for (let item of raw.list) {
+            let processed;
+            if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
+              processed = processWorkout(item, rFTPaSec, lthrVal);
+            } else {
+              processed = item;
+            }
+            await dbSaveActivity(processed);
+            const idx = activities.findIndex(a => a.id === processed.id);
+            if (idx >= 0) activities[idx] = processed;
+            else activities.push(processed);
+          }
+        } else {
+          let processed;
+          if (raw.points && raw.points.length && (!raw.paceZoneTimes || !raw.uphill)) {
+            processed = processWorkout(raw, rFTPaSec, lthrVal);
+          } else {
+            processed = raw;
+          }
+          await dbSaveActivity(processed);
+          const idx = activities.findIndex(a => a.id === processed.id);
+          if (idx >= 0) activities[idx] = processed;
+          else activities.push(processed);
+        }
       } catch (err) {
         console.error(`Errore file ${file.name}:`, err);
         alert(`Impossibile importare ${file.name}: ${err.message}`);
