@@ -80,7 +80,7 @@
       position: relative;
     }
     .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.5; white-space: pre-line; }
+    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.6; white-space: pre-line; }
 
     /* MODALE ZONE CARDIO */
     #hrModal {
@@ -655,7 +655,7 @@
   };
 
   // ==========================================
-  // 2. MODULO IA (GOOGLE GEMINI - 3.6-FLASH & AUTO-DETECT)
+  // 2. MODULO IA (GOOGLE GEMINI - 3.6-FLASH & PARSER HTML)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -678,7 +678,6 @@
           .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
           .map(m => m.name.replace(/^models\//, ''));
 
-        // Cerca specificamente 3.6-flash o qualsiasi versione flash più aggiornata
         targetModel = available.find(m => m.includes("3.6-flash")) 
                    || available.find(m => m.includes("flash")) 
                    || available.find(m => m.includes("pro")) 
@@ -692,7 +691,10 @@
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 850 }
+      generationConfig: { 
+        temperature: 0.4, 
+        maxOutputTokens: 2048 
+      }
     };
 
     const response = await fetch(endpoint, {
@@ -707,7 +709,11 @@
     }
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Nessun feedback generato.";
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Nessun feedback generato.";
+
+    return rawText
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
 
   async function askAITrainingStatus() {
@@ -725,7 +731,7 @@
     const box = document.getElementById('aiStatusBox');
     const content = document.getElementById('aiStatusContent');
     box.style.display = 'block';
-    content.innerText = "Interrogazione modello Gemini in corso...";
+    content.innerHTML = "Interrogazione modello Gemini in corso...";
 
     const prompt = `Agisci come un esperto allenatore di running e trail running (stile Joe Friel / TrainingPeaks). 
 Analizza i seguenti dati del mio carico di allenamento:
@@ -743,7 +749,7 @@ Forniscimi un'analisi sintetica in 3 punti:
 
     try {
       const reply = await callGemini(prompt);
-      content.innerText = reply;
+      content.innerHTML = reply;
     } catch (err) {
       content.innerText = "Errore: " + err.message;
     }
@@ -757,7 +763,7 @@ Forniscimi un'analisi sintetica in 3 punti:
     const box = document.getElementById('aiActivityBox');
     const content = document.getElementById('aiActivityContent');
     box.style.display = 'block';
-    content.innerText = `Analisi dell'allenamento "${act.title}" in corso...`;
+    content.innerHTML = `Analisi dell'allenamento "${act.title}" in corso...`;
 
     const u = act.uphill, d = act.downhill, f = act.flat;
     const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
@@ -785,7 +791,7 @@ Fornisci un debriefing tecnico strutturato:
 
     try {
       const reply = await callGemini(prompt);
-      content.innerText = reply;
+      content.innerHTML = reply;
     } catch (err) {
       content.innerText = "Errore: " + err.message;
     }
