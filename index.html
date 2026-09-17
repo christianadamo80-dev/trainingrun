@@ -655,7 +655,7 @@
   };
 
   // ==========================================
-  // 2. MODULO IA (GOOGLE GEMINI - LISTMODELS DINAMICO)
+  // 2. MODULO IA (GOOGLE GEMINI - 3.6-FLASH & AUTO-DETECT)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -669,7 +669,7 @@
       return null;
     }
 
-    let targetModel = null;
+    let targetModel = "gemini-3.6-flash";
     try {
       const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
       if (listRes.ok) {
@@ -678,16 +678,15 @@
           .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
           .map(m => m.name.replace(/^models\//, ''));
 
-        targetModel = available.find(m => m.includes("flash")) 
+        // Cerca specificamente 3.6-flash o qualsiasi versione flash più aggiornata
+        targetModel = available.find(m => m.includes("3.6-flash")) 
+                   || available.find(m => m.includes("flash")) 
                    || available.find(m => m.includes("pro")) 
-                   || available[0];
+                   || available[0]
+                   || "gemini-3.6-flash";
       }
     } catch (e) {
-      console.warn("Impossibile recuperare ListModels, uso fallback standard", e);
-    }
-
-    if (!targetModel) {
-      targetModel = "gemini-1.5-flash";
+      console.warn("Impossibile recuperare ListModels, uso target di default", e);
     }
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
