@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   
+  <!-- Parser Markdown per risposte IA -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
   <!-- Garmin FIT SDK Ufficiale -->
   <script type="module">
     import { Decoder, Stream } from 'https://esm.sh/@garmin/fitsdk';
@@ -79,8 +82,12 @@
       margin-top: 14px;
       position: relative;
     }
-    .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.6; white-space: pre-line; }
+    .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.6; }
+    .ai-feedback-content p { margin-bottom: 10px; }
+    .ai-feedback-content ul, .ai-feedback-content ol { margin-left: 20px; margin-bottom: 10px; }
+    .ai-feedback-content li { margin-bottom: 4px; }
+    .ai-feedback-content strong { color: #38bdf8; }
 
     /* MODALE ZONE CARDIO */
     #hrModal {
@@ -655,7 +662,7 @@
   };
 
   // ==========================================
-  // 2. MODULO IA (GOOGLE GEMINI - 3.6-FLASH & PARSER HTML)
+  // 2. MODULO IA (GOOGLE GEMINI - CONCATENAZIONE COMPLETA PARTS & MARKED)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -693,7 +700,7 @@
       contents: [{ parts: [{ text: promptText }] }],
       generationConfig: { 
         temperature: 0.4, 
-        maxOutputTokens: 2048 
+        maxOutputTokens: 2500 
       }
     };
 
@@ -709,11 +716,31 @@
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Nessun feedback generato.";
+    const candidate = data.candidates?.[0];
+    if (!candidate || !candidate.content || !candidate.content.parts) {
+      return "Nessuna risposta ricevuta dal modello.";
+    }
 
-    return rawText
+    // Unisce tutti i pezzi di testo ignorando i blocchi di reasoning interno
+    const fullText = candidate.content.parts
+      .filter(p => !p.thought && p.text)
+      .map(p => p.text)
+      .join('\n')
+      .trim();
+
+    if (!fullText) {
+      return candidate.content.parts.map(p => p.text || '').join('\n').trim() || "Nessun feedback generato.";
+    }
+
+    // Converte il Markdown completo in HTML strutturato
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(fullText);
+    }
+
+    return fullText
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
   }
 
   async function askAITrainingStatus() {
@@ -731,7 +758,7 @@
     const box = document.getElementById('aiStatusBox');
     const content = document.getElementById('aiStatusContent');
     box.style.display = 'block';
-    content.innerHTML = "Interrogazione modello Gemini in corso...";
+    content.innerHTML = "<p>Interrogazione modello Gemini in corso...</p>";
 
     const prompt = `Agisci come un esperto allenatore di running e trail running (stile Joe Friel / TrainingPeaks). 
 Analizza i seguenti dati del mio carico di allenamento:
@@ -742,7 +769,7 @@ Analizza i seguenti dati del mio carico di allenamento:
 - Chilometri ultimi 7gg: ${km7d} km
 - Training Stress Score (TSS) ultimi 7gg: ${tss7d}
 
-Forniscimi un'analisi sintetica in 3 punti:
+Forniscimi un'analisi tecnica completa e strutturata:
 1. **Stato Attuale e Rischio Sovraccarico**: interpreta i valori di TSB e Ramp Rate.
 2. **Adattamento Fisiologico**: stiamo costruendo o siamo in fase di stanchezza eccessiva?
 3. **Consiglio per i prossimi 2-3 giorni**: suggerisci se spingere con sessioni qualitative, fare fondo lento Z2 o prevedere un giorno di scarico attivo/riposo.`;
@@ -751,7 +778,7 @@ Forniscimi un'analisi sintetica in 3 punti:
       const reply = await callGemini(prompt);
       content.innerHTML = reply;
     } catch (err) {
-      content.innerText = "Errore: " + err.message;
+      content.innerHTML = `<span style="color: var(--danger);">Errore: ${err.message}</span>`;
     }
   }
 
@@ -763,7 +790,7 @@ Forniscimi un'analisi sintetica in 3 punti:
     const box = document.getElementById('aiActivityBox');
     const content = document.getElementById('aiActivityContent');
     box.style.display = 'block';
-    content.innerHTML = `Analisi dell'allenamento "${act.title}" in corso...`;
+    content.innerHTML = `<p>Analisi dell'allenamento "${act.title}" in corso...</p>`;
 
     const u = act.uphill, d = act.downhill, f = act.flat;
     const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
@@ -785,7 +812,7 @@ Analizza questa sessione di allenamento:
 - Note atleta: ${act.notes || "nessuna nota"}
 
 Fornisci un debriefing tecnico strutturato:
-1. **Valutazione dell'Efficienza**: analizza la differenza tra passo reale e NGP e commenta il Decoupling Aerobico (se sotto il 5% ottima base aerobica, se superiore c'è stato calo di efficienza o disidratazione).
+1. **Valutazione dell'Efficienza**: analizza la differenza tra passo reale e NGP e commenta il Decoupling Aerobico.
 2. **Gestione Pendenze (Trail/Salita)**: commenta la VAM e il ritmo in salita vs discesa.
 3. **Giudizio Finale & Recupero**: quanto è stato tassante l'allenamento e come gestire le prossime 24 ore.`;
 
@@ -793,7 +820,7 @@ Fornisci un debriefing tecnico strutturato:
       const reply = await callGemini(prompt);
       content.innerHTML = reply;
     } catch (err) {
-      content.innerText = "Errore: " + err.message;
+      content.innerHTML = `<span style="color: var(--danger);">Errore: ${err.message}</span>`;
     }
   }
 
