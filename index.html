@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro Suite - Multi-Athlete & Auto-Sync Garmin</title>
+  <title>Running & Trail Analytics Pro Suite - TrainingPeaks Style</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   
-  <!-- Parser Markdown per risposte IA -->
+  <!-- Parser Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- Garmin FIT SDK Ufficiale -->
+  <!-- Garmin FIT SDK -->
   <script type="module">
     import { Decoder, Stream } from 'https://esm.sh/@garmin/fitsdk';
     window.GarminFitSDK = { Decoder, Stream };
   </script>
 
-  <!-- Google Identity Services (OAuth2) -->
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
@@ -68,7 +68,6 @@
     .btn-sync.danger { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: #fca5a5; }
     .btn-sync.danger:hover { background: var(--danger); color: #fff; }
     .btn-sync.ai { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: #fff; }
-    .btn-sync.ai:hover { opacity: 0.9; }
 
     .settings-bar { display: flex; gap: 12px; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
@@ -94,75 +93,7 @@
       cursor: pointer;
     }
 
-    /* BOX FEEDBACK IA */
-    .ai-feedback-box {
-      display: none;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
-      border: 1px solid #6366f1;
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 14px;
-      position: relative;
-    }
-    .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.6; }
-    .ai-feedback-content p { margin-bottom: 10px; }
-    .ai-feedback-content ul, .ai-feedback-content ol { margin-left: 20px; margin-bottom: 10px; }
-    .ai-feedback-content li { margin-bottom: 4px; }
-    .ai-feedback-content strong { color: #38bdf8; }
-
-    /* MODALE ZONE CARDIO */
-    #hrModal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.75);
-      z-index: 9999;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-content {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      width: 90%;
-      max-width: 520px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .zone-row-edit {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      font-size: 0.82rem;
-    }
-    .zone-row-edit input {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 4px;
-      width: 70px;
-      text-align: center;
-      font-weight: 600;
-    }
-
-    #thresholdAlert {
-      display: none;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid var(--accent-primary);
-      border-radius: 8px;
-      padding: 12px 18px;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
+    /* Training Status Banner */
     .status-banner {
       background: linear-gradient(135deg, #151e2e 0%, #1e293b 100%);
       border: 1px solid var(--border);
@@ -176,66 +107,150 @@
     @media (min-width: 850px) {
       .status-banner { grid-template-columns: 280px 1fr 280px; }
     }
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.76rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      width: fit-content;
-    }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; width: fit-content; }
     .status-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.35; margin-top: 4px; }
-    
-    .status-metrics {
-      display: flex;
-      justify-content: space-around;
-      background: rgba(11, 15, 25, 0.5);
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
+    .status-metrics { display: flex; justify-content: space-around; background: rgba(11, 15, 25, 0.5); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); }
     .status-col { text-align: center; }
-    .status-col .val { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .status-col .val { font-size: 1.3rem; font-weight: 700; }
     .status-col .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
 
-    .status-right {
+    /* Box Feedback IA */
+    .ai-feedback-box {
+      display: none;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
+      border: 1px solid #6366f1;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .ai-feedback-content { font-size: 0.84rem; color: var(--text); line-height: 1.6; }
+
+    /* CALENDARIO TRAININGPEAKS */
+    .tp-calendar-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
-      font-size: 0.78rem;
-      border-left: 1px solid var(--border);
-      padding-left: 16px;
+      gap: 14px;
     }
-    .status-right-row { display: flex; justify-content: space-between; color: var(--muted); }
-    .status-right-row span:last-child { font-weight: 600; color: var(--text); }
-
-    .dropzone {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      padding: 18px;
-      text-align: center;
-      background: var(--card-bg);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .dropzone:hover { border-color: var(--accent-primary); background: #13232c; }
-    .dropzone p { color: var(--muted); margin-top: 3px; font-size: 0.82rem; }
-    input[type="file"] { display: none; }
-
-    .view-title-bar {
+    .calendar-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #111a28;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
       flex-wrap: wrap;
       gap: 10px;
     }
-    .view-title-bar h2 { font-size: 1.05rem; font-weight: 700; }
+    .cal-nav-group { display: flex; gap: 6px; align-items: center; }
+    .cal-view-switch { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .cal-view-btn { background: transparent; border: none; color: var(--muted); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; font-weight: 600; }
+    .cal-view-btn.active { background: #1e3a5f; color: var(--accent-ctl); }
+
+    .calendar-grid-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .cal-cell {
+      background: rgba(11, 15, 25, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-height: 100px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .cal-cell:hover { background: rgba(30, 41, 59, 0.5); border-color: var(--accent-ctl); }
+    .cal-cell.today { border: 1px solid var(--accent-ctl); background: rgba(56, 189, 248, 0.05); }
+    .cal-cell.different-month { opacity: 0.35; }
+    .cal-cell-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+
+    /* Badge Workout Calendario */
+    .cal-item {
+      font-size: 0.72rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cal-item.completed { background: rgba(16, 185, 129, 0.2); border-left: 3px solid var(--accent-primary); color: #a7f3d0; }
+    .cal-item.planned { background: rgba(56, 189, 248, 0.18); border-left: 3px solid var(--accent-ctl); color: #bae6fd; }
+
+    /* BUILDER WORKOUT MODAL */
+    #workoutModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+    .workout-modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 92%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .step-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .step-row {
+      display: grid;
+      grid-template-columns: 110px 100px 1fr 40px;
+      gap: 8px;
+      align-items: center;
+      background: var(--bg);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .step-row select, .step-row input {
+      background: #111a28;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
+
+    /* Struttura Logbook */
+    .main-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 1000px) { .main-grid { grid-template-columns: 320px 1fr; } }
+    .activity-list-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; max-height: 860px; }
+    .activity-list-header { padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; }
+    .activity-items { overflow-y: auto; flex: 1; }
+    .activity-row { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .activity-row:hover { background: var(--card-hover); }
+    .activity-row.active { background: #1e3a5f; border-left: 3px solid var(--accent-ctl); }
+    .act-date { font-size: 0.7rem; color: var(--muted); }
+    .act-title { font-weight: 600; font-size: 0.84rem; margin: 1px 0; }
+    .act-stats { font-size: 0.75rem; color: var(--muted); }
+    .badge-tss { background: rgba(16, 185, 129, 0.15); color: var(--accent-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
 
     .grid-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
@@ -246,117 +261,17 @@
     .chart-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
     .chart-box h2 { font-size: 0.92rem; margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
     .chart-canvas { height: 260px; width: 100%; }
-
-    .main-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
-    @media (min-width: 1000px) {
-      .main-grid { grid-template-columns: 320px 1fr; }
-    }
-
-    .activity-list-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; max-height: 860px; }
-    .activity-list-header { padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; }
-    .activity-items { overflow-y: auto; flex: 1; }
-    .activity-row {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.15s;
-    }
-    .activity-row:hover { background: var(--card-hover); }
-    .activity-row.active { background: #1e3a5f; border-left: 3px solid var(--accent-ctl); }
-    .act-date { font-size: 0.7rem; color: var(--muted); }
-    .act-title { font-weight: 600; font-size: 0.84rem; margin: 1px 0; }
-    .act-stats { font-size: 0.75rem; color: var(--muted); }
-    .badge-tss { background: rgba(16, 185, 129, 0.15); color: var(--accent-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
-    .act-actions { display: flex; align-items: center; gap: 6px; }
-    .btn-row-action { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 0.95rem; padding: 2px 4px; border-radius: 3px; }
-    .btn-row-action:hover { color: #fff; background: #27374d; }
-    .btn-del:hover { color: var(--danger) !important; }
-
-    .terrain-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left; margin-top: 6px; }
+    .terrain-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left; }
     .terrain-table th, .terrain-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
-    .terrain-table th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.68rem; }
-
-    .dashboard-secondary-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 14px; }
-    @media (min-width: 860px) {
-      .dashboard-secondary-grid { grid-template-columns: 1fr 1fr; }
-    }
+    .terrain-table th { color: var(--muted); text-transform: uppercase; font-size: 0.68rem; }
+    .dashboard-secondary-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 860px) { .dashboard-secondary-grid { grid-template-columns: 1fr 1fr; } }
     #map { height: 260px; border-radius: 8px; border: 1px solid var(--border); width: 100%; }
 
-    .zone-container { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
-    .zone-bar-wrapper { display: flex; align-items: center; gap: 8px; font-size: 0.74rem; }
-    .zone-label { width: 125px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .zone-track { flex: 1; height: 10px; background: #0f172a; border-radius: 6px; overflow: hidden; }
-    .zone-fill { height: 100%; border-radius: 6px; }
-    .zone-meta { width: 85px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
-
-    .notes-box { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-    .notes-box textarea {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: #fff;
-      padding: 8px 10px;
-      font-size: 0.8rem;
-      resize: vertical;
-      min-height: 55px;
-    }
-    .rpe-select { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
-
-    /* SEZIONE CALENDARIO & WORKOUT PLANNER */
-    .planner-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .planner-form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      align-items: flex-end;
-    }
-    .planner-form-grid label {
-      font-size: 0.75rem;
-      color: var(--muted);
-      display: block;
-      margin-bottom: 4px;
-    }
-    .planner-form-grid input, .planner-form-grid select {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-    }
-    .scheduled-workouts-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .scheduled-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(11, 15, 25, 0.6);
-      border: 1px solid var(--border);
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-    }
-    .scheduled-row-date {
-      color: var(--accent-ctl);
-      font-weight: 700;
-      width: 100px;
-    }
+    .dropzone { border: 2px dashed var(--border); border-radius: 10px; padding: 16px; text-align: center; background: var(--card-bg); cursor: pointer; }
+    .dropzone:hover { border-color: var(--accent-primary); }
+    .dropzone p { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+    input[type="file"] { display: none; }
   </style>
 </head>
 <body>
@@ -365,50 +280,29 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Multi-Atleta & Garmin Sync Automatico</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Workout Builder & Calendario Stile TrainingPeaks</p>
     </div>
 
     <div class="top-controls">
       <div class="athlete-selector-box">
         <label for="athleteSelect" style="font-size: 0.76rem; color: var(--muted); font-weight: 600;">👤 Atleta:</label>
         <select id="athleteSelect" onchange="switchAthlete(this.value)"></select>
-        <button class="btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="createNewAthlete()" title="Aggiungi Nuovo Profilo Atleta">➕ Nuovo</button>
-        <button class="btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="renameCurrentAthlete()" title="Rinomina Atleta">✏️</button>
-        <button class="btn-sync danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteCurrentAthlete()" title="Elimina Atleta e Attività">🗑️</button>
+        <button class="btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="createNewAthlete()">➕ Nuovo</button>
+        <button class="btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="renameCurrentAthlete()">✏️</button>
+        <button class="btn-sync danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteCurrentAthlete()">🗑️</button>
       </div>
 
-      <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()">
-        <span>☁️ Drive</span>
-      </button>
-      <button class="btn-sync" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()">
-        <span>⬆️ Salva</span>
-      </button>
-      <button class="btn-sync" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()">
-        <span>⬇️ Sincronizza</span>
-      </button>
+      <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()"><span>☁️ Drive</span></button>
+      <button class="btn-sync" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()"><span>⬆️ Salva</span></button>
+      <button class="btn-sync" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()"><span>⬇️ Sync</span></button>
     </div>
   </header>
 
-  <!-- BANNER SOGLIA RILEVATA -->
-  <div id="thresholdAlert">
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 1.4rem;">⚡</span>
-      <div>
-        <div style="font-weight: 700; font-size: 0.9rem; color: #fff;">Nuova Soglia Rilevata dalle tue corse!</div>
-        <div style="font-size: 0.8rem; color: var(--muted);" id="thresholdAlertText">rFTPa stimato: -- | LTHR: --</div>
-      </div>
-    </div>
-    <div style="display: flex; gap: 8px;">
-      <button class="btn-sync success" onclick="applyDetectedThresholds()">Applica e Ricalcola</button>
-      <button class="btn-sync" onclick="document.getElementById('thresholdAlert').style.display='none'">Ignora</button>
-    </div>
-  </div>
-
-  <!-- Barra Impostazioni & Automatismi GitHub -->
+  <!-- Barra Impostazioni -->
   <div class="settings-bar">
     <div>
       <label for="ghRepoInput">GitHub Repo (username/repo):</label>
-      <input type="text" id="ghRepoInput" style="width: 155px; text-align: left;" placeholder="es. mario/trail-suite" onchange="saveGitHubCredentials()">
+      <input type="text" id="ghRepoInput" style="width: 160px; text-align: left;" placeholder="es. mario/trail-suite" onchange="saveGitHubCredentials()">
     </div>
     <div>
       <label for="ghTokenInput">GitHub Token (PAT):</label>
@@ -419,10 +313,6 @@
       <input type="password" id="geminiApiKey" style="width: 140px; text-align: left;" placeholder="Chiave AI Studio" onchange="saveGeminiApiKey()">
     </div>
     <div>
-      <label for="clientIdInput">Drive Client ID:</label>
-      <input type="text" id="clientIdInput" style="width: 140px; text-align: left;" placeholder="Client ID OAuth2">
-    </div>
-    <div>
       <label for="rfTPA">rFTPa (<span id="lblCurAthleteNamePace">Atleta</span>):</label>
       <input type="text" id="rfTPA" value="04:15" style="width: 55px;" placeholder="04:15">
     </div>
@@ -430,342 +320,155 @@
       <label for="lthr">LTHR (bpm):</label>
       <input type="number" id="lthr" value="168" style="width: 50px;" placeholder="168">
     </div>
-    <button class="btn-sync" style="padding: 5px 10px; font-size: 0.78rem;" onclick="openHRModal()">
-      ⚙️ Zone Cardio
-    </button>
+    <button class="btn-sync" style="padding: 5px 10px; font-size: 0.78rem;" onclick="openHRModal()">⚙️ Zone Cardio</button>
   </div>
 
-  <!-- MODALE CONFIGURAZIONE ZONE CARDIO -->
-  <div id="hrModal">
-    <div class="modal-content">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-        <h3 style="font-size: 1.05rem;" id="hrModalTitle">Configurazione Zone Cardio (BPM)</h3>
-        <button onclick="closeHRModal()" style="background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer;">&times;</button>
-      </div>
-
-      <div style="display: flex; gap: 16px; align-items: center;">
-        <label><input type="radio" name="hrMode" id="hrModeAuto" value="auto" checked onchange="toggleHRModeUI()"> Calcola in Auto (Friel LTHR)</label>
-        <label><input type="radio" name="hrMode" id="hrModeManual" value="manual" onchange="toggleHRModeUI()"> Manuale Personalizzato</label>
-      </div>
-
-      <div id="hrZonesEditContainer"></div>
-
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
-        <button class="btn-sync" onclick="closeHRModal()">Annulla</button>
-        <button class="btn-sync success" onclick="saveHRZonesFromModal()">Salva e Ricalcola</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TRAINING STATUS BANNER -->
+  <!-- Status Banner -->
   <div class="status-banner" id="statusBanner">
     <div class="status-left">
       <div style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
         <div class="status-badge" id="statusBadge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">Dati insufficienti</div>
         <button class="btn-sync ai" style="padding: 4px 8px; font-size: 0.72rem;" onclick="askAITrainingStatus()">🤖 Analizza Forma con IA</button>
       </div>
-      <div class="status-desc" id="statusDesc">Carica le sessioni di questo atleta per calcolare lo stato di forma e il carico.</div>
+      <div class="status-desc" id="statusDesc">Carica le sessioni di questo atleta per calcolare lo stato di forma.</div>
     </div>
-
     <div class="status-metrics">
-      <div class="status-col">
-        <div class="val" id="bannerCTL" style="color: var(--accent-ctl);">--</div>
-        <div class="lbl">Fitness (CTL)</div>
-      </div>
-      <div class="status-col">
-        <div class="val" id="bannerATL" style="color: var(--accent-atl);">--</div>
-        <div class="lbl">Fatica (ATL)</div>
-      </div>
-      <div class="status-col">
-        <div class="val" id="bannerTSB" style="color: var(--accent-tsb);">--</div>
-        <div class="lbl">Forma (TSB)</div>
-      </div>
+      <div class="status-col"><div class="val" id="bannerCTL" style="color: var(--accent-ctl);">--</div><div class="lbl">Fitness (CTL)</div></div>
+      <div class="status-col"><div class="val" id="bannerATL" style="color: var(--accent-atl);">--</div><div class="lbl">Fatica (ATL)</div></div>
+      <div class="status-col"><div class="val" id="bannerTSB" style="color: var(--accent-tsb);">--</div><div class="lbl">Forma (TSB)</div></div>
     </div>
-
-    <div class="status-right">
-      <div class="status-right-row">
-        <span>Ramp Rate (7gg):</span>
-        <span id="bannerRamp">--</span>
-      </div>
-      <div class="status-right-row">
-        <span>Km ultimi 7gg:</span>
-        <span id="bannerKm7d">-- km</span>
-      </div>
-      <div class="status-right-row">
-        <span>TSS ultimi 7gg:</span>
-        <span id="bannerTSS7d">--</span>
-      </div>
+    <div class="status-right" style="border-left: 1px solid var(--border); padding-left: 16px; font-size: 0.78rem;">
+      <div style="display: flex; justify-content: space-between; color: var(--muted);"><span>Ramp Rate (7gg):</span><span id="bannerRamp" style="color: #fff; font-weight: 600;">--</span></div>
+      <div style="display: flex; justify-content: space-between; color: var(--muted); margin-top: 4px;"><span>Km 7gg:</span><span id="bannerKm7d" style="color: #fff; font-weight: 600;">-- km</span></div>
+      <div style="display: flex; justify-content: space-between; color: var(--muted); margin-top: 4px;"><span>TSS 7gg:</span><span id="bannerTSS7d" style="color: #fff; font-weight: 600;">--</span></div>
     </div>
   </div>
 
-  <!-- Box Risposta IA per Training Status -->
+  <!-- Box Risposta IA -->
   <div class="ai-feedback-box" id="aiStatusBox">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 id="aiStatusTitle">🤖 Valutazione Coach IA (Stato di Forma & Carico)</h3>
+      <h3 id="aiStatusTitle">🤖 Valutazione Coach IA</h3>
       <button onclick="document.getElementById('aiStatusBox').style.display='none'" style="background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem;">&times;</button>
     </div>
     <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
   </div>
 
-  <!-- PIANIFICATORE ALLENAMENTI & AUTO-SYNC GARMIN -->
-  <div class="planner-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-      <div>
-        <h2 style="font-size: 1.05rem; font-weight: 700;">📅 Pianifica Allenamento & Sincronizza su Garmin</h2>
-        <p style="color: var(--muted); font-size: 0.78rem;">Pianifica gli allenamenti e inviali all'orologio in modo del tutto automatico</p>
+  <!-- CALENDARIO STILE TRAININGPEAKS -->
+  <div class="tp-calendar-container">
+    <div class="calendar-toolbar">
+      <div class="cal-nav-group">
+        <button class="btn-sync" onclick="navigateCalendar(-1)">◀ Mese Prec.</button>
+        <button class="btn-sync" onclick="navigateCalendar(0)">Oggi</button>
+        <button class="btn-sync" onclick="navigateCalendar(1)">Mese Succ. ▶</button>
+        <h2 id="calendarTitle" style="font-size: 1.1rem; margin-left: 10px; font-weight: 700;">Settembre 2026</h2>
       </div>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn-sync ai" onclick="askAIGenerateWorkout()">🤖 Proponi con IA</button>
-        <button class="btn-sync success" id="btnAutoSyncGarmin" onclick="pushWorkoutsToGitHubAndRunAction()">🚀 Invia e Sincronizza su Garmin</button>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="cal-view-switch">
+          <button class="cal-view-btn active" id="btnViewMonth" onclick="setCalendarView('month')">Mese</button>
+          <button class="cal-view-btn" id="btnViewWeek" onclick="setCalendarView('week')">Settimana</button>
+        </div>
+        <button class="btn-sync ai" onclick="askAIGenerateWorkout()">🤖 Workout IA</button>
+        <button class="btn-sync primary" onclick="openWorkoutBuilderModal()">➕ Crea Allenamento</button>
+        <button class="btn-sync success" id="btnAutoSyncGarmin" onclick="pushWorkoutsToGitHubAndRunAction()">🚀 Sincronizza Garmin</button>
       </div>
     </div>
 
-    <div class="planner-form-grid">
-      <div>
-        <label for="planDate">Data Allenamento:</label>
-        <input type="date" id="planDate">
-      </div>
-      <div>
-        <label for="planName">Nome Allenamento:</label>
-        <input type="text" id="planName" placeholder="Es. Ripetute 5x1000m Z4">
-      </div>
-      <div>
-        <label for="planType">Tipologia Sessione:</label>
-        <select id="planType">
-          <option value="easy">Fondo Lento Z2 (Rigenerante)</option>
-          <option value="intervals">Ripetute / Intervalli Z4</option>
-          <option value="tempo">Medio / Tempo Run Z3</option>
-          <option value="long">Lungo Collinare / Trail</option>
-          <option value="hills">Salite Brevi / Forza Specifica</option>
-        </select>
-      </div>
-      <div>
-        <label for="planDuration">Durata (Minuti):</label>
-        <input type="number" id="planDuration" value="50" min="15" max="240">
-      </div>
-      <div>
-        <button class="btn-sync primary" style="width: 100%; justify-content: center;" onclick="addPlannedWorkout()">➕ Aggiungi al Calendario</button>
-      </div>
+    <div class="calendar-grid-header">
+      <div>LUN</div><div>MAR</div><div>MER</div><div>GIO</div><div>VEN</div><div>SAB</div><div>DOM</div>
     </div>
-
-    <div>
-      <h3 style="font-size: 0.84rem; color: var(--muted); text-transform: uppercase; margin-bottom: 6px;">Allenamenti Programmati in Calendario (<span id="scheduledCount">0</span>)</h3>
-      <div class="scheduled-workouts-list" id="scheduledWorkoutsList">
-        <p style="color: var(--muted); font-size: 0.8rem;">Nessun allenamento programmato. Aggiungine uno sopra o chiedi all'IA.</p>
-      </div>
-    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
   </div>
 
-  <!-- Upload GPX / FIT / JSON Manuale -->
-  <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-    <h3>Carica sessioni per <span id="dropzoneAthleteName" style="color: var(--accent-ctl);">questo atleta</span> (.FIT, .GPX o .JSON)</h3>
-    <p>Trascina qui i tuoi file o caricali dall'orologio</p>
-    <input type="file" id="fileInput" accept=".fit,.gpx,.json" multiple>
+  <!-- MODALE WORKOUT BUILDER TRAININGPEAKS -->
+  <div id="workoutModal">
+    <div class="workout-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <h3 style="font-size: 1.1rem;">🛠️ Workout Builder TrainingPeaks</h3>
+        <button onclick="closeWorkoutBuilderModal()" style="background: transparent; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div>
+          <label style="font-size: 0.75rem; color: var(--muted);">Data di esecuzione:</label>
+          <input type="date" id="wbDate" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 6px 8px; border-radius: 4px;">
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; color: var(--muted);">Titolo Allenamento:</label>
+          <input type="text" id="wbTitle" placeholder="Es. Ripetute 5x1000 Z4" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 6px 8px; border-radius: 4px;">
+        </div>
+      </div>
+
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase;">Step & Intervalli Strutturati</span>
+          <button class="btn-sync" style="padding: 3px 8px; font-size: 0.72rem;" onclick="addWorkoutStepRow()">➕ Aggiungi Step</button>
+        </div>
+        <div class="step-list" id="workoutStepsContainer"></div>
+      </div>
+
+      <div style="background: rgba(11, 15, 25, 0.5); padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.78rem; display: flex; justify-content: space-between;">
+        <span>Durata Totale Stimata: <strong id="wbTotalDuration">0 min</strong></span>
+        <span>Training Stress Stimato: <strong id="wbEstimatedTSS" style="color: var(--accent-primary);">0 TSS</strong></span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-sync" onclick="closeWorkoutBuilderModal()">Annulla</button>
+        <button class="btn-sync success" onclick="saveStructuredWorkout()">Salva a Calendario</button>
+      </div>
+    </div>
   </div>
 
   <!-- PMC Chart -->
   <div class="chart-box">
     <h2>Performance Management Chart (CTL / ATL / TSB) - <span id="pmcAthleteTitle">Atleta</span></h2>
-    <div class="chart-canvas">
-      <canvas id="pmcChart"></canvas>
-    </div>
+    <div class="chart-canvas"><canvas id="pmcChart"></canvas></div>
+  </div>
+
+  <!-- Upload GPX / FIT / JSON -->
+  <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+    <h3>Trascina qui le corse (.FIT, .GPX o .JSON) per <span id="dropzoneAthleteName" style="color: var(--accent-ctl);">questo atleta</span></h3>
+    <p>I file caricati verranno aggiunti all'archivio e mostrati sul calendario</p>
+    <input type="file" id="fileInput" accept=".fit,.gpx,.json" multiple>
   </div>
 
   <!-- Split View Principale -->
   <div class="main-grid">
     <div class="activity-list-card">
       <div class="activity-list-header">
-        <span>Corse di <span id="listAthleteTitle">Atleta</span> (<span id="actCount">0</span>)</span>
-        <button class="btn-sync" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showGlobalDashboard()">📊 Panoramica</button>
+        <span>Archivio Corse (<span id="actCount">0</span>)</span>
+        <button class="btn-sync" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showGlobalDashboard()">📊 Tutte</button>
       </div>
-      <div class="activity-items" id="activityList">
-        <p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente.</p>
-      </div>
+      <div class="activity-items" id="activityList"></div>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 14px;">
-      
-      <div class="view-title-bar">
-        <div>
-          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em;" id="viewContextLabel">PANORAMICA GENERALE</span>
-          <h2 id="viewContextTitle">Riepilogo Carriera Atleta</h2>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button id="btnAskAIActivity" class="btn-sync ai" style="display: none;" onclick="askAIActivity()">
-            🤖 Chiedi Feedback Corsa
-          </button>
-          <button id="btnBackToGlobal" class="btn-sync" style="display: none;" onclick="showGlobalDashboard()">
-            ⬅️ Panoramica Generale
-          </button>
-        </div>
-      </div>
-
-      <!-- Box Risposta IA per Singola Attività -->
-      <div class="ai-feedback-box" id="aiActivityBox">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3>🤖 Debriefing Corsa del Coach IA</h3>
-          <button onclick="document.getElementById('aiActivityBox').style.display='none'" style="background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem;">&times;</button>
-        </div>
-        <div class="ai-feedback-content" id="aiActivityContent">Generazione feedback in corso...</div>
-      </div>
-
-      <!-- Prima fila metriche -->
       <div class="grid-metrics">
-        <div class="card">
-          <div class="card-title" id="lblDist">Distanza & D+</div>
-          <div class="card-val" id="valDist">--</div>
-          <div class="card-sub" id="valElevation">D+ -- m | D- -- m</div>
-        </div>
-        <div class="card">
-          <div class="card-title" id="lblKmEffort">Km-Sforzo (ITRA/UTMB)</div>
-          <div class="card-val" id="valKmEffort" style="color: var(--accent-purple);">--</div>
-          <div class="card-sub" id="subKmEffort">Dist + (D+ / 100)</div>
-        </div>
-        <div class="card">
-          <div class="card-title" id="lblTime">Tempo Totale</div>
-          <div class="card-val" id="valTime">--</div>
-          <div class="card-sub" id="valPace">Passo Medio: --</div>
-        </div>
-        <div class="card">
-          <div class="card-title" id="lblNGP">NGP Medio & IF</div>
-          <div class="card-val" id="valNGP" style="color: var(--accent-ctl);">--</div>
-          <div class="card-sub" id="valIF">IF: --</div>
-        </div>
-        <div class="card">
-          <div class="card-title" id="lblTSS">Training Stress Totale</div>
-          <div class="card-val" id="valTSS" style="color: var(--accent-primary);">--</div>
-          <div class="card-sub" id="subTSS">TSS Cumulato</div>
-        </div>
+        <div class="card"><div class="card-title">Distanza & D+</div><div class="card-val" id="valDist">--</div><div class="card-sub" id="valElevation">D+ -- m</div></div>
+        <div class="card"><div class="card-title">Km-Sforzo</div><div class="card-val" id="valKmEffort" style="color: var(--accent-purple);">--</div><div class="card-sub">Dist + (D+/100)</div></div>
+        <div class="card"><div class="card-title">Tempo Totale</div><div class="card-val" id="valTime">--</div><div class="card-sub" id="valPace">Passo: --</div></div>
+        <div class="card"><div class="card-title">NGP & IF</div><div class="card-val" id="valNGP" style="color: var(--accent-ctl);">--</div><div class="card-sub" id="valIF">IF: --</div></div>
+        <div class="card"><div class="card-title">TSS Totale</div><div class="card-val" id="valTSS" style="color: var(--accent-primary);">--</div><div class="card-sub">Training Stress</div></div>
       </div>
 
-      <!-- Seconda fila metriche -->
-      <div class="grid-metrics">
-        <div class="card">
-          <div class="card-title" id="lblVAM">VAM Salita</div>
-          <div class="card-val" id="valVAM" style="color: var(--accent-tsb);">--</div>
-          <div class="card-sub" id="subVAM">m/h verticali</div>
-        </div>
-        <div class="card">
-          <div class="card-title">Frequenza Cardiaca</div>
-          <div class="card-val" id="valHR">--</div>
-          <div class="card-sub" id="valHRMax">Max: -- bpm</div>
-        </div>
-        <div class="card">
-          <div class="card-title">Cadenza Media</div>
-          <div class="card-val" id="valCadence">--</div>
-          <div class="card-sub" id="valCadenceMax">Max: -- spm</div>
-        </div>
-        <div class="card">
-          <div class="card-title">Potenza Corsa</div>
-          <div class="card-val" id="valPower">--</div>
-          <div class="card-sub" id="valNP">NP: -- W</div>
-        </div>
-        <div class="card">
-          <div class="card-title" id="lblDecoupling">Aerobic Decoupling</div>
-          <div class="card-val" id="valDecoupling">--</div>
-          <div class="card-sub" id="subDecoupling">Pw:Hr / Drift cardiaco</div>
-        </div>
-      </div>
-
-      <!-- Dettaglio Terreno -->
-      <div class="card" style="padding: 12px 14px;">
-        <div class="card-title" id="terrainTitle">Ripartizione Terreno Globale</div>
-        <table class="terrain-table">
-          <thead>
-            <tr>
-              <th>Settore</th>
-              <th>Distanza</th>
-              <th>Tempo</th>
-              <th>Dislivello</th>
-              <th>Passo Medio</th>
-              <th>VAM / Vert. Speed</th>
-            </tr>
-          </thead>
-          <tbody id="terrainBreakdownBody">
-            <tr><td colspan="6" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Grafico Principale -->
       <div class="chart-box">
-        <h2 id="workoutChartTitle">Volumi Mensili Storici (Km & Dislivello D+)</h2>
-        <div class="chart-canvas">
-          <canvas id="workoutChart"></canvas>
-        </div>
+        <h2 id="workoutChartTitle">Volumi Mensili Storici</h2>
+        <div class="chart-canvas"><canvas id="workoutChart"></canvas></div>
       </div>
 
-      <!-- Mappa e Mean Max Table -->
       <div class="dashboard-secondary-grid">
-        <div class="chart-box" style="padding: 12px;" id="mapBoxContainer">
-          <h2 style="font-size: 0.84rem; margin-bottom: 8px;" id="mapTitle">Mappa Ultima Sessione Registrata</h2>
-          <div id="map"></div>
-        </div>
-
-        <div class="chart-box" style="padding: 14px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 8px;" id="meanMaxTitle">Record Assoluti di Prestazione (All-Time Mean Max)</h2>
-          <table class="terrain-table">
-            <thead>
-              <tr>
-                <th>Durata</th>
-                <th>Miglior Passo</th>
-                <th>FC Media</th>
-                <th>Potenza (Watt)</th>
-              </tr>
-            </thead>
-            <tbody id="meanMaxTableBody">
-              <tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>
-            </tbody>
-          </table>
+        <div class="chart-box" style="padding: 12px;"><h2 style="font-size: 0.84rem; margin-bottom: 8px;">Mappa Ultima Sessione</h2><div id="map"></div></div>
+        <div class="chart-box" style="padding: 14px;"><h2 style="font-size: 0.84rem; margin-bottom: 8px;">Record Prestazione (Mean Max)</h2>
+          <table class="terrain-table"><thead><tr><th>Durata</th><th>Miglior Passo</th><th>FC Media</th><th>Potenza</th></tr></thead><tbody id="meanMaxTableBody"></tbody></table>
         </div>
       </div>
-
-      <!-- Distribuzione Zone Passo & Cardio -->
-      <div class="dashboard-secondary-grid">
-        <div class="chart-box" style="padding: 14px;">
-          <h2 style="font-size: 0.84rem; margin-bottom: 10px;" id="paceZoneTitle">Distribuzione Zone Passo Totale</h2>
-          <div class="zone-container" id="paceZonesContainer"></div>
-        </div>
-        <div class="chart-box" style="padding: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h2 style="font-size: 0.84rem;" id="hrZoneTitle">Distribuzione Zone Cardio Totale</h2>
-            <span id="hrZoneModeBadge" style="font-size: 0.7rem; color: var(--accent-ctl); background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">Auto Friel</span>
-          </div>
-          <div class="zone-container" id="hrZonesContainer"></div>
-        </div>
-      </div>
-
-      <!-- Diario Allenamento e Note -->
-      <div class="card notes-box" id="notesBoxContainer" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span class="card-title">Note Sessione & Sforzo Percepito</span>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 0.75rem; color: var(--muted);">RPE (1-10):</label>
-            <select id="actRPE" class="rpe-select" onchange="saveActivityNotes()">
-              <option value="">--</option>
-              <option value="1">1 - Molto Facile</option>
-              <option value="2">2 - Facile</option>
-              <option value="3">3 - Moderato</option>
-              <option value="4">4 - Abbastanza duro</option>
-              <option value="5">5 - Duro</option>
-              <option value="6">6 - Molto duro</option>
-              <option value="7">7 - Molto vigoroso</option>
-              <option value="8">8 - Quasi massimale</option>
-              <option value="9">9 - Sforzo estremo</option>
-              <option value="10">10 - Massimale assoluto</option>
-            </select>
-          </div>
-        </div>
-        <textarea id="actNotes" placeholder="Aggiungi sensazioni, scarpe usate, meteo o note tecniche..." onblur="saveActivityNotes()"></textarea>
-      </div>
-
     </div>
   </div>
 </div>
 
 <script>
   // ==========================================
-  // 1. STATO & COSTANTI MULTI-ATLETA
+  // 1. STATO & COSTANTI
   // ==========================================
   const DRIVE_FILENAME = "running_logbook_pro.json";
   const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -802,6 +505,10 @@
   let selectedActivityId = null;
   let scheduledWorkouts = [];
 
+  // Calendario
+  let calendarCurrentDate = new Date();
+  let calendarViewMode = 'month'; // 'month' o 'week'
+
   let workoutChartInstance = null;
   let pmcChartInstance = null;
   let mapInstance = null;
@@ -822,16 +529,10 @@
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) athletes = parsed;
-      } catch (e) {
-        console.warn("Errore caricamento atleti", e);
-      }
+      } catch (e) {}
     }
     const savedCurId = localStorage.getItem('tp_current_athlete_id');
-    if (savedCurId && athletes.some(a => a.id === savedCurId)) {
-      currentAthleteId = savedCurId;
-    } else {
-      currentAthleteId = athletes[0].id;
-    }
+    if (savedCurId && athletes.some(a => a.id === savedCurId)) currentAthleteId = savedCurId;
 
     const savedWorkouts = localStorage.getItem('tp_scheduled_workouts');
     if (savedWorkouts) {
@@ -849,10 +550,8 @@
   }
 
   function saveGitHubCredentials() {
-    const repo = document.getElementById('ghRepoInput').value.trim();
-    const token = document.getElementById('ghTokenInput').value.trim();
-    localStorage.setItem('tp_gh_repo', repo);
-    localStorage.setItem('tp_gh_token', token);
+    localStorage.setItem('tp_gh_repo', document.getElementById('ghRepoInput').value.trim());
+    localStorage.setItem('tp_gh_token', document.getElementById('ghTokenInput').value.trim());
   }
 
   function renderAthleteSelector() {
@@ -867,63 +566,8 @@
     document.getElementById('lblCurAthleteNamePace').innerText = cur.name;
     document.getElementById('dropzoneAthleteName').innerText = cur.name;
     document.getElementById('pmcAthleteTitle').innerText = cur.name;
-    document.getElementById('listAthleteTitle').innerText = cur.name;
-    document.getElementById('viewContextTitle').innerText = `Riepilogo Carriera di ${cur.name}`;
 
-    updateHRZonesFromCurrentSettings();
-    renderScheduledWorkouts();
-  }
-
-  function createNewAthlete() {
-    const name = prompt("Inserisci il nome del nuovo atleta:");
-    if (!name || !name.trim()) return;
-
-    const newId = "ath_" + Date.now();
-    const newAth = {
-      id: newId,
-      name: name.trim(),
-      rfTPA: "04:30",
-      lthr: 165,
-      hrConfig: {
-        mode: "auto",
-        zones: getAutoFrielZones(165)
-      }
-    };
-    athletes.push(newAth);
-    currentAthleteId = newId;
-    saveAthletesToStorage();
-    renderAthleteSelector();
-    filterActivitiesForCurrentAthlete();
-  }
-
-  function renameCurrentAthlete() {
-    const cur = getCurrentAthlete();
-    const newName = prompt("Rinomina atleta:", cur.name);
-    if (!newName || !newName.trim()) return;
-    cur.name = newName.trim();
-    saveAthletesToStorage();
-    renderAthleteSelector();
-  }
-
-  async function deleteCurrentAthlete() {
-    if (athletes.length <= 1) {
-      alert("Deve essere presente almeno un atleta.");
-      return;
-    }
-    const cur = getCurrentAthlete();
-    if (!confirm(`Sei sicuro di voler eliminare l'atleta "${cur.name}" e tutte le sue corse associate?`)) return;
-
-    const toDelete = allActivities.filter(a => a.athleteId === cur.id);
-    for (const a of toDelete) {
-      await dbDeleteActivity(a.id);
-    }
-    allActivities = allActivities.filter(a => a.athleteId !== cur.id);
-
-    athletes = athletes.filter(a => a.id !== cur.id);
-    currentAthleteId = athletes[0].id;
-    saveAthletesToStorage();
-    renderAthleteSelector();
-    filterActivitiesForCurrentAthlete();
+    renderCalendar();
   }
 
   function switchAthlete(newId) {
@@ -936,125 +580,272 @@
 
   function filterActivitiesForCurrentAthlete() {
     selectedActivityId = null;
-
-    allActivities.forEach(a => {
-      if (!a.athleteId) a.athleteId = athletes[0].id;
-    });
-
+    allActivities.forEach(a => { if (!a.athleteId) a.athleteId = athletes[0].id; });
     activities = allActivities.filter(a => a.athleteId === currentAthleteId);
-    showGlobalDashboard();
 
+    showGlobalDashboard();
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
-    checkThresholdUpdates();
-    renderScheduledWorkouts();
+    renderCalendar();
   }
 
-  async function promptReassignAthlete(e, actId) {
-    e.stopPropagation();
-    const act = allActivities.find(a => a.id === actId);
-    if (!act) return;
+  // ==========================================
+  // 2. CALENDARIO SETTIMANALE & MENSILE (TP STYLE)
+  // ==========================================
+  function setCalendarView(mode) {
+    calendarViewMode = mode;
+    document.getElementById('btnViewMonth').classList.toggle('active', mode === 'month');
+    document.getElementById('btnViewWeek').classList.toggle('active', mode === 'week');
+    renderCalendar();
+  }
 
-    const options = athletes.map((a, i) => `${i + 1}. ${a.name}`).join('\n');
-    const choice = prompt(`A quale atleta vuoi assegnare "${act.title}"?\n\n${options}\n\nInserisci il numero:`);
-    if (!choice) return;
-
-    const idx = parseInt(choice, 10) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= athletes.length) {
-      alert("Scelta non valida.");
-      return;
+  function navigateCalendar(dir) {
+    if (dir === 0) {
+      calendarCurrentDate = new Date();
+    } else {
+      if (calendarViewMode === 'month') {
+        calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + dir);
+      } else {
+        calendarCurrentDate.setDate(calendarCurrentDate.getDate() + (dir * 7));
+      }
     }
-
-    const targetAth = athletes[idx];
-    act.athleteId = targetAth.id;
-
-    const rFTPaSec = parsePaceToSec(targetAth.rfTPA);
-    const lthrVal = targetAth.lthr;
-    const rFTPaSpeed = 1000 / rFTPaSec;
-    const globalNgpSpeed = 1000 / act.globalNgpSec;
-    act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
-    act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
-    recomputeActivityHRZones(act, targetAth.hrConfig);
-
-    await dbSaveActivity(act);
-    filterActivitiesForCurrentAthlete();
+    renderCalendar();
   }
 
-  // ==========================================
-  // 2. PIANIFICATORE ALLENAMENTI & AUTO-SYNC GITHUB/GARMIN
-  // ==========================================
-  function renderScheduledWorkouts() {
+  function renderCalendar() {
     const cur = getCurrentAthlete();
-    const listEl = document.getElementById('scheduledWorkoutsList');
-    const filtered = scheduledWorkouts.filter(w => !w.athleteId || w.athleteId === cur.id);
-    document.getElementById('scheduledCount').innerText = filtered.length;
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
 
-    if (!filtered.length) {
-      listEl.innerHTML = `<p style="color: var(--muted); font-size: 0.8rem;">Nessun allenamento programmato per ${cur.name}.</p>`;
-      return;
+    const year = calendarCurrentDate.getFullYear();
+    const month = calendarCurrentDate.getMonth();
+
+    const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+    document.getElementById('calendarTitle').innerText = `${monthNames[month]} ${year}`;
+
+    let daysToRender = [];
+
+    if (calendarViewMode === 'month') {
+      const firstDay = new Date(year, month, 1);
+      const startingDay = (firstDay.getDay() + 6) % 7; // Lunedì = 0
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevMonthDays = new Date(year, month, 0).getDate();
+
+      // Giorni mese precedente
+      for (let i = startingDay - 1; i >= 0; i--) {
+        daysToRender.push({
+          date: new Date(year, month - 1, prevMonthDays - i),
+          currentMonth: false
+        });
+      }
+
+      // Giorni mese corrente
+      for (let i = 1; i <= daysInMonth; i++) {
+        daysToRender.push({
+          date: new Date(year, month, i),
+          currentMonth: true
+        });
+      }
+
+      // Giorni mese successivo per completare la griglia a 35/42 celle
+      const remaining = (7 - (daysToRender.length % 7)) % 7;
+      for (let i = 1; i <= remaining; i++) {
+        daysToRender.push({
+          date: new Date(year, month + 1, i),
+          currentMonth: false
+        });
+      }
+    } else {
+      // Vista Settimanale
+      const curr = new Date(calendarCurrentDate);
+      const day = (curr.getDay() + 6) % 7;
+      const monday = new Date(curr.setDate(curr.getDate() - day));
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        daysToRender.push({
+          date: d,
+          currentMonth: d.getMonth() === month
+        });
+      }
     }
 
-    listEl.innerHTML = filtered
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map((w, idx) => `
-        <div class="scheduled-row">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span class="scheduled-row-date">📅 ${w.date}</span>
-            <div>
-              <strong style="color: var(--text);">${w.name}</strong>
-              <div style="color: var(--muted); font-size: 0.75rem;">${w.durationMinutes} min | ${w.description || ''}</div>
-            </div>
-          </div>
-          <button class="btn-sync danger" style="padding: 2px 6px; font-size: 0.72rem;" onclick="deleteScheduledWorkout('${w.id}')">&times; Rimuovi</button>
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    daysToRender.forEach(item => {
+      const dStr = item.date.toISOString().split('T')[0];
+      const isToday = dStr === todayStr;
+
+      const cell = document.createElement('div');
+      cell.className = `cal-cell ${item.currentMonth ? '' : 'different-month'} ${isToday ? 'today' : ''}`;
+      cell.onclick = () => openWorkoutBuilderModal(dStr);
+
+      // Cerca attività completate e pianificate
+      const completedActs = activities.filter(a => a.dateStr === dStr);
+      const plannedActs = scheduledWorkouts.filter(w => (!w.athleteId || w.athleteId === cur.id) && w.date === dStr);
+
+      let contentHTML = `
+        <div class="cal-cell-head">
+          <span>${item.date.getDate()}</span>
+          ${completedActs.length ? `<span style="color:var(--accent-primary); font-size:0.68rem;">${Math.round(completedActs.reduce((s,a)=>s+a.rTSS,0))} TSS</span>` : ''}
         </div>
-      `).join('');
+      `;
+
+      // Badge corse completate
+      completedActs.forEach(act => {
+        contentHTML += `
+          <div class="cal-item completed" title="${act.title}">
+            <span>🏃 ${(act.totalDistKm).toFixed(1)}k</span>
+            <span>${act.rTSS}</span>
+          </div>
+        `;
+      });
+
+      // Badge allenamenti pianificati
+      plannedActs.forEach(p => {
+        contentHTML += `
+          <div class="cal-item planned" title="${p.name}">
+            <span>🎯 ${p.name}</span>
+            <span>${p.durationMinutes}m</span>
+          </div>
+        `;
+      });
+
+      cell.innerHTML = contentHTML;
+      grid.appendChild(cell);
+    });
   }
 
-  function addPlannedWorkout() {
-    const cur = getCurrentAthlete();
-    const date = document.getElementById('planDate').value;
-    const name = document.getElementById('planName').value.trim();
-    const duration = parseInt(document.getElementById('planDuration').value, 10) || 45;
-    const type = document.getElementById('planType').value;
+  // ==========================================
+  // 3. WORKOUT BUILDER A STEP (TP STYLE)
+  // ==========================================
+  let currentWorkoutSteps = [];
 
-    if (!date) return alert("Seleziona una data per l'allenamento.");
-    if (!name) return alert("Inserisci un nome o descrizione per la sessione.");
+  function openWorkoutBuilderModal(prefillDate) {
+    document.getElementById('workoutModal').style.display = 'flex';
+    document.getElementById('wbDate').value = prefillDate || new Date().toISOString().split('T')[0];
+    document.getElementById('wbTitle').value = "Ripetute Z4 / Soglia";
+    currentWorkoutSteps = [
+      { type: "Warmup", duration: 15, target: "Z2" },
+      { type: "Interval", duration: 4, target: "Z4" },
+      { type: "Recovery", duration: 2, target: "Z1" },
+      { type: "Interval", duration: 4, target: "Z4" },
+      { type: "Cooldown", duration: 10, target: "Z1" }
+    ];
+    renderWorkoutStepRows();
+  }
+
+  function closeWorkoutBuilderModal() {
+    document.getElementById('workoutModal').style.display = 'none';
+  }
+
+  function renderWorkoutStepRows() {
+    const cont = document.getElementById('workoutStepsContainer');
+    cont.innerHTML = '';
+
+    currentWorkoutSteps.forEach((step, idx) => {
+      const row = document.createElement('div');
+      row.className = 'step-row';
+      row.innerHTML = `
+        <select onchange="updateStepField(${idx}, 'type', this.value)">
+          <option value="Warmup" ${step.type==='Warmup'?'selected':''}>Riscaldamento</option>
+          <option value="Interval" ${step.type==='Interval'?'selected':''}>Ripetuta / Attivo</option>
+          <option value="Recovery" ${step.type==='Recovery'?'selected':''}>Recupero</option>
+          <option value="Cooldown" ${step.type==='Cooldown'?'selected':''}>Defaticamento</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <input type="number" min="1" max="180" value="${step.duration}" onchange="updateStepField(${idx}, 'duration', parseInt(this.value,10)||1)">
+          <span style="font-size:0.75rem; color:var(--muted);">min</span>
+        </div>
+        <select onchange="updateStepField(${idx}, 'target', this.value)">
+          <option value="Z1" ${step.target==='Z1'?'selected':''}>Zona 1 (Recupero Attivo)</option>
+          <option value="Z2" ${step.target==='Z2'?'selected':''}>Zona 2 (Fondo Lento Aerobico)</option>
+          <option value="Z3" ${step.target==='Z3'?'selected':''}>Zona 3 (Medio / Tempo)</option>
+          <option value="Z4" ${step.target==='Z4'?'selected':''}>Zona 4 (Soglia Anaerobica)</option>
+          <option value="Z5" ${step.target==='Z5'?'selected':''}>Zona 5 (VO2max / Massimale)</option>
+        </select>
+        <button class="btn-sync danger" style="padding:4px;" onclick="removeWorkoutStepRow(${idx})">&times;</button>
+      `;
+      cont.appendChild(row);
+    });
+
+    updateWorkoutEstimates();
+  }
+
+  function updateStepField(idx, field, val) {
+    currentWorkoutSteps[idx][field] = val;
+    updateWorkoutEstimates();
+  }
+
+  function addWorkoutStepRow() {
+    currentWorkoutSteps.push({ type: "Interval", duration: 5, target: "Z4" });
+    renderWorkoutStepRows();
+  }
+
+  function removeWorkoutStepRow(idx) {
+    currentWorkoutSteps.splice(idx, 1);
+    renderWorkoutStepRows();
+  }
+
+  function updateWorkoutEstimates() {
+    let totMin = 0;
+    let estTSS = 0;
+    const factorMap = { Z1: 0.55, Z2: 0.72, Z3: 0.85, Z4: 0.98, Z5: 1.15 };
+
+    currentWorkoutSteps.forEach(s => {
+      totMin += s.duration;
+      const ifFactor = factorMap[s.target] || 0.75;
+      estTSS += (s.duration / 60) * Math.pow(ifFactor, 2) * 100;
+    });
+
+    document.getElementById('wbTotalDuration').innerText = `${totMin} min`;
+    document.getElementById('wbEstimatedTSS').innerText = `${Math.round(estTSS)} TSS`;
+  }
+
+  function saveStructuredWorkout() {
+    const cur = getCurrentAthlete();
+    const date = document.getElementById('wbDate').value;
+    const title = document.getElementById('wbTitle').value.trim() || "Allenamento Strutturato";
+
+    if (!date) return alert("Seleziona una data.");
+    if (!currentWorkoutSteps.length) return alert("Inserisci almeno uno step.");
+
+    let totMin = currentWorkoutSteps.reduce((acc, s) => acc + s.duration, 0);
 
     const newWorkout = {
       id: "plan_" + Date.now(),
       athleteId: cur.id,
       athleteName: cur.name,
       date: date,
-      name: name,
-      type: type,
-      durationMinutes: duration,
-      description: `Target ${cur.name}: Passo Soglia ${cur.rfTPA}, FC Soglia ${cur.lthr} bpm`
+      name: title,
+      durationMinutes: totMin,
+      steps: currentWorkoutSteps,
+      description: currentWorkoutSteps.map(s => `${s.type} ${s.duration}' in ${s.target}`).join(' | ')
     };
 
     scheduledWorkouts.push(newWorkout);
     saveWorkoutsToStorage();
-    renderScheduledWorkouts();
+    closeWorkoutBuilderModal();
+    renderCalendar();
   }
 
-  function deleteScheduledWorkout(id) {
-    scheduledWorkouts = scheduledWorkouts.filter(w => w.id !== id);
-    saveWorkoutsToStorage();
-    renderScheduledWorkouts();
-  }
-
-  // COMMIT AUTOMATICO DEL FILE JSON SU GITHUB + TRIGGER DELLA GITHUB ACTION
+  // ==========================================
+  // 4. AUTO-SYNC CON GITHUB & GARMIN CONNECT
+  // ==========================================
   async function pushWorkoutsToGitHubAndRunAction() {
-    const repo = document.getElementById('ghRepoInput').value.trim();
+    let repo = document.getElementById('ghRepoInput').value.trim();
     const token = document.getElementById('ghTokenInput').value.trim();
+    repo = repo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
 
     if (!repo || !token) {
-      alert("Inserisci il tuo repository GitHub (es. username/repo) e il Personal Access Token nelle impostazioni in alto per sincronizzare in automatico.");
+      alert("Inserisci GitHub Repo (es. username/repo) e il Personal Access Token nelle impostazioni in alto.");
       return;
     }
 
     const btn = document.getElementById('btnAutoSyncGarmin');
-    btn.innerText = "⏳ Invio in corso...";
+    btn.innerText = "⏳ Invio...";
     btn.disabled = true;
 
     try {
@@ -1063,168 +854,81 @@
       const contentStr = JSON.stringify(scheduledWorkouts, null, 2);
       const contentBase64 = btoa(unescape(encodeURIComponent(contentStr)));
 
-      // 1. Verifica se il file esiste già per recuperare lo SHA corrente
+      const defaultHeaders = {
+        "Authorization": `token ${token}`,
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+      };
+
       let sha = null;
       try {
-        const getRes = await fetch(apiUrl, {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Accept": "application/vnd.github.v3+json"
-          }
-        });
+        const getRes = await fetch(apiUrl, { headers: defaultHeaders });
         if (getRes.ok) {
           const getData = await getRes.json();
           sha = getData.sha;
         }
       } catch (e) {}
 
-      // 2. Commit del file scheduled_workouts.json
-      const putBody = {
-        message: "Aggiornamento allenamenti programmati da Dashboard [skip ci]",
-        content: contentBase64,
-        sha: sha || undefined
-      };
-
       const putRes = await fetch(apiUrl, {
         method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Accept": "application/vnd.github.v3+json"
-        },
-        body: JSON.stringify(putBody)
+        headers: defaultHeaders,
+        body: JSON.stringify({
+          message: "Aggiornamento allenamenti strutturati [skip ci]",
+          content: contentBase64,
+          sha: sha || undefined
+        })
       });
 
       if (!putRes.ok) {
-        const err = await putRes.json();
-        throw new Error("Errore commit GitHub: " + (err.message || putRes.statusText));
+        const err = await putRes.json().catch(()=>({}));
+        throw new Error(err.message || putRes.statusText);
       }
 
-      // 3. Trigger immediato del workflow GitHub Action (sync_garmin)
-      btn.innerText = "⚡ Avvio sincronizzazione...";
-      const workflowsUrl = `https://api.github.com/repos/${repo}/actions/workflows`;
-      const wfListRes = await fetch(workflowsUrl, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/vnd.github.v3+json"
-        }
-      });
-
+      // Trigger Workflow Action
+      btn.innerText = "⚡ Avvio Garmin...";
+      const wfListRes = await fetch(`https://api.github.com/repos/${repo}/actions/workflows`, { headers: defaultHeaders });
       if (wfListRes.ok) {
         const wfData = await wfListRes.json();
         const mainWf = (wfData.workflows || [])[0];
         if (mainWf) {
           await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${mainWf.id}/dispatches`, {
             method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json",
-              "Accept": "application/vnd.github.v3+json"
-            },
+            headers: defaultHeaders,
             body: JSON.stringify({ ref: "main" })
           });
         }
       }
 
       btn.innerText = "✅ Sincronizzato con Garmin!";
-      alert("Allenamenti caricati su GitHub e invio a Garmin Connect avviato con successo! Tra 1-2 minuti li troverai nel calendario dell'orologio.");
-      setTimeout(() => {
-        btn.innerText = "🚀 Invia e Sincronizza su Garmin";
-        btn.disabled = false;
-      }, 3500);
-
+      alert("Allenamenti inviati con successo! Il runner li sta programmando su Garmin Connect.");
+      setTimeout(() => { btn.innerText = "🚀 Sincronizza Garmin"; btn.disabled = false; }, 3000);
     } catch (err) {
-      alert("Errore sincronizzazione automatica: " + err.message);
-      btn.innerText = "🚀 Invia e Sincronizza su Garmin";
+      alert("Errore sincronizzazione: " + err.message);
+      btn.innerText = "🚀 Sincronizza Garmin";
       btn.disabled = false;
     }
   }
 
-  async function askAIGenerateWorkout() {
-    const cur = getCurrentAthlete();
-    const pmc = computePMC(activities);
-    const today = pmc.length ? pmc[pmc.length - 1] : { ctl: 0, atl: 0, tsb: 0 };
-    
-    const prompt = `Sei un coach di running e trail running professionista.
-Proponi un singolo allenamento strutturato ideale per i prossimi 1-2 giorni per l'atleta ${cur.name}.
-Dati atleta:
-- Stato di forma attuale: CTL ${today.ctl}, ATL ${today.atl}, TSB (Freschezza) ${today.tsb}
-- Passo Soglia (rFTPa): ${cur.rfTPA}/km
-- Frequenza cardiaca di soglia (LTHR): ${cur.lthr} bpm
-
-Rispondi ESCLUSIVAMENTE con un oggetto JSON valido (senza testo extra prima o dopo) con questa struttura esatta:
-{
-  "name": "Nome dell'allenamento",
-  "type": "intervals o easy o tempo o hills",
-  "durationMinutes": 50,
-  "description": "Descrizione sintetica con riscaldamento, target di passo/cardio e defaticamento"
-}`;
-
-    try {
-      alert("L'IA sta elaborando la proposta di allenamento adatta alla tua forma...");
-      const reply = await callGemini(prompt);
-      const cleanJson = reply.replace(/```json/g, '').replace(/```/g, '').trim();
-      const plan = JSON.parse(cleanJson);
-
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      document.getElementById('planDate').value = tomorrow.toISOString().split('T')[0];
-      document.getElementById('planName').value = plan.name;
-      document.getElementById('planDuration').value = plan.durationMinutes || 50;
-      if (plan.type) document.getElementById('planType').value = plan.type;
-      alert(`L'IA propone: "${plan.name}" (${plan.durationMinutes} min).\n\n${plan.description}\n\nI dati sono stati precompilati nel form, clicca 'Aggiungi al Calendario' per confermare.`);
-    } catch (err) {
-      alert("Impossibile generare l'allenamento con l'IA: " + err.message);
-    }
-  }
-
   // ==========================================
-  // 3. MODULO IA (GOOGLE GEMINI MULTI-MODELLO)
+  // 5. MODULO IA (GEMINI MULTI-MODELLO)
   // ==========================================
   function saveGeminiApiKey() {
-    const key = document.getElementById('geminiApiKey').value.trim();
-    localStorage.setItem('tp_gemini_api_key', key);
+    localStorage.setItem('tp_gemini_api_key', document.getElementById('geminiApiKey').value.trim());
   }
 
   async function callGemini(promptText) {
     const apiKey = document.getElementById('geminiApiKey').value.trim();
-    if (!apiKey) {
-      alert("Inserisci prima la tua chiave Gemini API nel campo in alto.");
-      return null;
-    }
+    if (!apiKey) { alert("Inserisci la chiave Gemini API."); return null; }
 
-    let candidateModels = [
-      "gemini-2.5-flash",
-      "gemini-2.5-pro",
-      "gemini-1.5-flash",
-      "gemini-1.5-pro"
-    ];
-
-    try {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const available = (listData.models || [])
-          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
-          .map(m => m.name.replace(/^models\//, ''));
-
-        candidateModels = [...new Set([...candidateModels, ...available])];
-      }
-    } catch (e) {
-      console.warn("Impossibile contattare ListModels", e);
-    }
-
+    let candidateModels = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
       generationConfig: { temperature: 0.4, maxOutputTokens: 2500 }
     };
 
-    let lastErrorMsg = "";
-
     for (const model of candidateModels) {
       try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const response = await fetch(endpoint, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -1234,880 +938,91 @@ Rispondi ESCLUSIVAMENTE con un oggetto JSON valido (senza testo extra prima o do
           const data = await response.json();
           const candidate = data.candidates?.[0];
           if (!candidate || !candidate.content || !candidate.content.parts) continue;
-
-          const fullText = candidate.content.parts
-            .filter(p => !p.thought && p.text)
-            .map(p => p.text)
-            .join('\n')
-            .trim();
-
-          const outText = fullText || candidate.content.parts.map(p => p.text || '').join('\n').trim();
-          if (!outText) continue;
-
-          if (window.marked && typeof window.marked.parse === 'function') {
-            return window.marked.parse(outText);
-          }
-          return outText
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>');
-        } else {
-          const errData = await response.json();
-          lastErrorMsg = errData.error?.message || `Errore HTTP ${response.status}`;
+          const fullText = candidate.content.parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n').trim();
+          if (window.marked && typeof window.marked.parse === 'function') return window.marked.parse(fullText);
+          return fullText;
         }
-      } catch (err) {
-        lastErrorMsg = err.message;
-      }
+      } catch (err) {}
     }
-
-    throw new Error(lastErrorMsg || "Nessun modello Gemini accessibile. Riprova tra pochi istanti.");
+    throw new Error("Nessun modello Gemini raggiungibile.");
   }
 
   async function askAITrainingStatus() {
     const cur = getCurrentAthlete();
     const pmc = computePMC(activities);
-    if (!pmc.length) return alert(`Carica prima delle sessioni per analizzare lo stato di forma di ${cur.name}.`);
+    if (!pmc.length) return alert(`Carica prima sessioni per ${cur.name}.`);
 
     const today = pmc[pmc.length - 1];
-    const nowTime = Date.now();
-    const sevenDaysMs = 7 * 24 * 3600 * 1000;
-    const recentActs = activities.filter(a => (nowTime - a.startTime) <= sevenDaysMs);
+    const recentActs = activities.filter(a => (Date.now() - a.startTime) <= 7 * 24 * 3600 * 1000);
     const km7d = recentActs.reduce((acc, a) => acc + a.totalDistKm, 0).toFixed(1);
     const tss7d = Math.round(recentActs.reduce((acc, a) => acc + a.rTSS, 0));
-    const rampRate = document.getElementById('bannerRamp').innerText;
 
     const box = document.getElementById('aiStatusBox');
     const content = document.getElementById('aiStatusContent');
     document.getElementById('aiStatusTitle').innerText = `🤖 Valutazione Coach IA - ${cur.name}`;
     box.style.display = 'block';
-    content.innerHTML = "<p>Interrogazione modello Gemini in corso...</p>";
+    content.innerHTML = "<p>Interrogazione modello in corso...</p>";
 
-    const prompt = `Agisci come un esperto allenatore di running e trail running (stile Joe Friel / TrainingPeaks). 
-Stai analizzando l'atleta: ${cur.name}.
-Parametri fisiologici attuali dell'atleta:
-- rFTPa (Passo Soglia): ${cur.rfTPA}/km
-- LTHR (FC Soglia): ${cur.lthr} bpm
-Dati del carico di allenamento:
-- Fitness attuale (CTL): ${today.ctl}
-- Fatica acuta (ATL): ${today.atl}
-- Forma/Freschezza (TSB): ${today.tsb}
-- Ramp Rate ultimi 7gg: ${rampRate}
-- Chilometri ultimi 7gg: ${km7d} km
-- Training Stress Score (TSS) ultimi 7gg: ${tss7d}
-
-Forniscimi un'analisi tecnica completa e personalizzata per ${cur.name}:
-1. **Stato Attuale e Rischio Sovraccarico**: interpreta i valori di TSB e Ramp Rate.
-2. **Adattamento Fisiologico**: stiamo costruendo o siamo in fase di stanchezza eccessiva?
-3. **Consiglio per i prossimi 2-3 giorni**: suggerisci se spingere con sessioni qualitative, fare fondo lento Z2 o prevedere un giorno di scarico attivo/riposo.`;
-
+    const prompt = `Coach Joe Friel TrainingPeaks. Atleta: ${cur.name}. rFTPa ${cur.rfTPA}/km, LTHR ${cur.lthr} bpm. CTL ${today.ctl}, ATL ${today.atl}, TSB ${today.tsb}, Km 7gg ${km7d}, TSS 7gg ${tss7d}. Analizza stato e consigli per i prossimi 2 giorni.`;
     try {
-      const reply = await callGemini(prompt);
-      content.innerHTML = reply;
-    } catch (err) {
-      content.innerHTML = `<span style="color: var(--danger);">Errore: ${err.message}</span>`;
-    }
-  }
-
-  async function askAIActivity() {
-    if (!selectedActivityId) return;
-    const act = activities.find(a => a.id === selectedActivityId);
-    if (!act) return;
-    const cur = getCurrentAthlete();
-
-    const box = document.getElementById('aiActivityBox');
-    const content = document.getElementById('aiActivityContent');
-    box.style.display = 'block';
-    content.innerHTML = `<p>Analisi dell'allenamento "${act.title}" in corso per ${cur.name}...</p>`;
-
-    const u = act.uphill, d = act.downhill, f = act.flat;
-    const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
-    const dPace = d.dist > 10 ? formatSecToPace(d.time / (d.dist / 1000)) : "--";
-
-    const prompt = `Agisci come un coach professionista di corsa e trail running.
-Analizza questa sessione di allenamento dell'atleta ${cur.name}:
-- Sessione: ${act.title} (${act.dateStr})
-- Parametri di riferimento: Passo Soglia ${cur.rfTPA}/km, FC Soglia ${cur.lthr} bpm
-- Distanza: ${act.totalDistKm.toFixed(2)} km | D+: ${act.totalElevationGain}m | D-: ${act.totalElevationLoss}m
-- Tempo Totale: ${formatDuration(act.totalTimeSec)}
-- Passo Medio: ${formatSecToPace(act.avgPaceSec)} | Passo Normalizzato (NGP): ${formatSecToPace(act.globalNgpSec)}
-- Intensity Factor (IF): ${act.intensityFactor.toFixed(2)} | rTSS: ${act.rTSS}
-- Km-Sforzo: ${act.kmEffort} km | VAM Salita: ${act.vam} m/h
-- Frequenza Cardiaca Media: ${act.avgHR ? act.avgHR + " bpm" : "N/D"} (Max: ${act.maxHR || "N/D"})
-- Aerobic Decoupling (Drift cardiaco Pw:Hr): ${act.decoupling !== null ? act.decoupling + "%" : "N/D"}
-- Cadenza Media: ${act.avgCadence ? act.avgCadence + " spm" : "N/D"}
-- Ripartizione: Salita ${(u.dist/1000).toFixed(1)}km a ${uPace}, Discesa ${(d.dist/1000).toFixed(1)}km a ${dPace}
-- RPE atleta (sforzo 1-10): ${act.rpe || "non specificato"}
-- Note atleta: ${act.notes || "nessuna nota"}
-
-Fornisci un debriefing tecnico strutturato:
-1. **Valutazione dell'Efficienza**: analizza la differenza tra passo reale e NGP e commenta il Decoupling Aerobico.
-2. **Gestione Pendenze (Trail/Salita)**: commenta la VAM e il ritmo in salita vs discesa.
-3. **Giudizio Finale & Recupero**: quanto è stato tassante l'allenamento e come gestire le prossime 24 ore.`;
-
-    try {
-      const reply = await callGemini(prompt);
-      content.innerHTML = reply;
-    } catch (err) {
-      content.innerHTML = `<span style="color: var(--danger);">Errore: ${err.message}</span>`;
-    }
-  }
-
-  // ==========================================
-  // 4. ZONE CARDIO
-  // ==========================================
-  function getAutoFrielZones(lthrVal) {
-    return [
-      { name: "Z1 Recupero", min: 0, max: Math.round(lthrVal * 0.85) - 1, color: "var(--z1)" },
-      { name: "Z2 Fondo Lento", min: Math.round(lthrVal * 0.85), max: Math.round(lthrVal * 0.89), color: "var(--z2)" },
-      { name: "Z3 Fondo Medio", min: Math.round(lthrVal * 0.90), max: Math.round(lthrVal * 0.94), color: "var(--z3)" },
-      { name: "Z4 Soglia Anaer.", min: Math.round(lthrVal * 0.95), max: Math.round(lthrVal * 0.99), color: "var(--z4)" },
-      { name: "Z5 Sopra Soglia", min: Math.round(lthrVal * 1.00), max: 220, color: "var(--z5)" }
-    ];
-  }
-
-  function updateHRZonesFromCurrentSettings() {
-    const cur = getCurrentAthlete();
-    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || cur.lthr || 168;
-    cur.lthr = lthrVal;
-
-    if (!cur.hrConfig) {
-      cur.hrConfig = { mode: "auto", zones: getAutoFrielZones(lthrVal) };
-    }
-
-    if (cur.hrConfig.mode === "auto") {
-      cur.hrConfig.zones = getAutoFrielZones(lthrVal);
-    }
-    const badge = document.getElementById('hrZoneModeBadge');
-    if (badge) {
-      badge.innerText = cur.hrConfig.mode === "auto" ? "Auto (Friel LTHR)" : "Manuale Personalizzato";
-      badge.style.color = cur.hrConfig.mode === "auto" ? "var(--accent-ctl)" : "var(--accent-primary)";
-    }
-    saveAthletesToStorage();
-  }
-
-  function openHRModal() {
-    const cur = getCurrentAthlete();
-    document.getElementById('hrModalTitle').innerText = `Configurazione Zone Cardio (BPM) - ${cur.name}`;
-    document.getElementById('hrModal').style.display = 'flex';
-    document.getElementById('hrModeAuto').checked = (cur.hrConfig.mode === "auto");
-    document.getElementById('hrModeManual').checked = (cur.hrConfig.mode === "manual");
-    renderHRZonesEditList();
-    toggleHRModeUI();
-  }
-
-  function closeHRModal() {
-    document.getElementById('hrModal').style.display = 'none';
-  }
-
-  function toggleHRModeUI() {
-    const cur = getCurrentAthlete();
-    const isAuto = document.getElementById('hrModeAuto').checked;
-    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
-    if (isAuto) {
-      cur.hrConfig.zones = getAutoFrielZones(lthrVal);
-      renderHRZonesEditList();
-    }
-    const inputs = document.querySelectorAll('#hrZonesEditContainer input');
-    inputs.forEach(inp => inp.disabled = isAuto);
-  }
-
-  function renderHRZonesEditList() {
-    const cur = getCurrentAthlete();
-    const cont = document.getElementById('hrZonesEditContainer');
-    cont.innerHTML = cur.hrConfig.zones.map((z, idx) => `
-      <div class="zone-row-edit">
-        <span style="color: ${z.color}; font-weight: 600;">${z.name}</span>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input type="number" id="hr_min_${idx}" value="${z.min}">
-          <span>-</span>
-          <input type="number" id="hr_max_${idx}" value="${z.max}">
-          <span style="color: var(--muted); font-size: 0.75rem;">bpm</span>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  async function saveHRZonesFromModal() {
-    const cur = getCurrentAthlete();
-    const isManual = document.getElementById('hrModeManual').checked;
-    cur.hrConfig.mode = isManual ? "manual" : "auto";
-
-    if (isManual) {
-      cur.hrConfig.zones.forEach((z, idx) => {
-        z.min = parseInt(document.getElementById(`hr_min_${idx}`).value, 10) || 0;
-        z.max = parseInt(document.getElementById(`hr_max_${idx}`).value, 10) || 220;
-      });
-    } else {
-      const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
-      cur.hrConfig.zones = getAutoFrielZones(lthrVal);
-    }
-
-    saveAthletesToStorage();
-    closeHRModal();
-    updateHRZonesFromCurrentSettings();
-
-    for (let act of activities) {
-      recomputeActivityHRZones(act, cur.hrConfig);
-      await dbSaveActivity(act);
-    }
-
-    if (selectedActivityId) selectActivity(selectedActivityId);
-    else showGlobalDashboard();
-  }
-
-  function recomputeActivityHRZones(act, config) {
-    if (!act.points || !act.points.length) return;
-    let hrZoneTimes = [0, 0, 0, 0, 0];
-    const zones = config.zones;
-
-    for (let i = 1; i < act.points.length; i++) {
-      const dt = Math.max((act.points[i].time - act.points[i - 1].time) / 1000, 1);
-      const hr = act.points[i].hr;
-      if (hr) {
-        let placed = false;
-        for (let z = 0; z < zones.length; z++) {
-          if (hr >= zones[z].min && hr <= zones[z].max) {
-            hrZoneTimes[z] += dt;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          if (hr < zones[0].min) hrZoneTimes[0] += dt;
-          else hrZoneTimes[4] += dt;
-        }
-      }
-    }
-    act.hrZoneTimes = hrZoneTimes;
-  }
-
-  // ==========================================
-  // 5. INDEXEDDB
-  // ==========================================
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = (e) => {
-        const d = e.target.result;
-        if (!d.objectStoreNames.contains(STORE_NAME)) {
-          d.createObjectStore(STORE_NAME, { keyPath: "id" });
-        }
-      };
-      request.onsuccess = (e) => { db = e.target.result; resolve(db); };
-      request.onerror = (e) => reject(e);
-    });
-  }
-
-  function dbSaveActivity(act) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).put(act);
-      tx.oncomplete = () => resolve();
-      tx.onerror = (e) => reject(e);
-    });
-  }
-
-  function dbGetAllActivities() {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const req = tx.objectStore(STORE_NAME).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = (e) => reject(e);
-    });
-  }
-
-  function dbDeleteActivity(id) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = (e) => reject(e);
-    });
-  }
-
-  function dbClearAll() {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = (e) => reject(e);
-    });
-  }
-
-  // ==========================================
-  // 6. UTILS
-  // ==========================================
-  function parsePaceToSec(str) {
-    const parts = (str || "04:15").split(':');
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || 0, 10);
-  }
-
-  function formatSecToPace(sec) {
-    if (!sec || !isFinite(sec) || sec <= 0) return "--:--";
-    const m = Math.floor(sec / 60);
-    const s = Math.round(sec % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
-  }
-
-  function formatDuration(sec) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = Math.round(sec % 60);
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    return `${m}m ${s}s`;
-  }
-
-  function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371e3;
-    const phi1 = lat1 * Math.PI / 180, phi2 = lat2 * Math.PI / 180;
-    const dPhi = (lat2 - lat1) * Math.PI / 180;
-    const dLambda = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
-    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
-  function energyCostRunning(i) {
-    return 155.4 * Math.pow(i, 5) - 30.4 * Math.pow(i, 4) - 43.3 * Math.pow(i, 3) + 46.3 * Math.pow(i, 2) + 19.5 * i + 3.6;
-  }
-
-  // ==========================================
-  // 7. PARSER FILE
-  // ==========================================
-  async function parseFile(file) {
-    const nameLower = file.name.toLowerCase();
-    if (nameLower.endsWith('.fit')) {
-      const buffer = await file.arrayBuffer();
-      return parseFIT(buffer, file.name);
-    } else if (nameLower.endsWith('.json')) {
-      const text = await file.text();
-      return parseJSONFile(text, file.name);
-    } else {
-      const text = await file.text();
-      return parseGPX(text, file.name);
-    }
-  }
-
-  function parseJSONFile(jsonText, fileName) {
-    let data;
-    try {
-      data = JSON.parse(jsonText);
+      content.innerHTML = await callGemini(prompt);
     } catch (e) {
-      throw new Error("File JSON non valido.");
+      content.innerHTML = `<span style="color:var(--danger);">${e.message}</span>`;
     }
-
-    if (data && data.athletes && Array.isArray(data.athletes)) {
-      return { isMultiExport: true, athletes: data.athletes, activities: data.activities || [] };
-    }
-
-    if (data && data.activities && Array.isArray(data.activities)) {
-      return { isCollection: true, list: data.activities, hrConfig: data.hrConfig };
-    }
-
-    if (Array.isArray(data)) {
-      return { isCollection: true, list: data };
-    }
-
-    if (data && (data.points || data.totalDistKm || data.totalDist)) {
-      return data;
-    }
-
-    throw new Error("Il file JSON non contiene dati di attività compatibili.");
   }
 
-  async function parseFIT(arrayBuffer, fileName) {
-    if (!window.GarminFitSDK) {
-      for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 100));
-        if (window.GarminFitSDK) break;
-      }
-    }
-    if (!window.GarminFitSDK) {
-      throw new Error("Libreria Garmin FIT SDK non caricata.");
-    }
-
-    const { Decoder, Stream } = window.GarminFitSDK;
-    const stream = Stream.fromByteArray(new Uint8Array(arrayBuffer));
-    const decoder = new Decoder(stream);
-    const { messages, errors } = decoder.read();
-
-    if (errors && errors.length > 0 && (!messages || !messages.recordMesgs)) {
-      throw new Error("File FIT non leggibile.");
-    }
-
-    const records = messages.recordMesgs || messages.records || [];
-    if (!records.length) throw new Error("Nessun punto traccia nel file FIT.");
-
-    let points = [];
-    let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
-
-    for (let i = 0; i < records.length; i++) {
-      const r = records[i];
-      let rawLat = r.positionLat ?? r.position_lat;
-      let rawLon = r.positionLong ?? r.position_long;
-      if (rawLat === undefined || rawLon === undefined || rawLat === null || rawLon === null) continue;
-
-      let lat = Math.abs(rawLat) > 90 ? rawLat * (180 / Math.pow(2, 31)) : rawLat;
-      let lon = Math.abs(rawLon) > 180 ? rawLon * (180 / Math.pow(2, 31)) : rawLon;
-
-      let ele = r.enhancedAltitude ?? r.enhanced_altitude ?? r.altitude ?? 0;
-      let dist = r.enhancedDistance ?? r.enhanced_distance ?? r.distance ?? 0;
-      let hr = r.heartRate ?? r.heart_rate ?? null;
-      let cadence = r.cadence ?? null;
-      let power = r.power ?? null;
-      let timestamp = r.timestamp ? new Date(r.timestamp).getTime() : 0;
-
-      if (points.length > 0) {
-        const last = points[points.length - 1];
-        const d = (dist > last.dist) ? (dist - last.dist) : haversine(last.lat, last.lon, lat, lon);
-        totalDist += d;
-        const dEle = ele - last.ele;
-        if (dEle > 0.5) totalElevationGain += dEle;
-        else if (dEle < -0.5) totalElevationLoss += Math.abs(dEle);
-      }
-      points.push({ lat, lon, ele, time: timestamp, dist: totalDist, hr, cadence, power });
-    }
-
-    return {
-      title: fileName.replace(/\.[^/.]+$/, ""),
-      points,
-      totalDist,
-      totalElevationGain,
-      totalElevationLoss,
-      startTime: points[0]?.time || Date.now()
-    };
-  }
-
-  function parseGPX(xmlText, fileName) {
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(xmlText, "text/xml");
-    const trkpts = xml.querySelectorAll("trkpt");
-    if (!trkpts.length) throw new Error("File GPX privo di punti traccia");
-
-    let points = [];
-    let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
-
-    for (let i = 0; i < trkpts.length; i++) {
-      const pt = trkpts[i];
-      const lat = parseFloat(pt.getAttribute("lat"));
-      const lon = parseFloat(pt.getAttribute("lon"));
-      const ele = parseFloat(pt.querySelector("ele")?.textContent || 0);
-      const timeStr = pt.querySelector("time")?.textContent;
-      const time = timeStr ? new Date(timeStr).getTime() : 0;
-
-      let hr = null, cadence = null, power = null;
-      const hrNode = pt.getElementsByTagNameNS("*", "hr")[0] || pt.querySelector("hr");
-      if (hrNode) hr = parseInt(hrNode.textContent, 10);
-      const cadNode = pt.getElementsByTagNameNS("*", "cad")[0] || pt.querySelector("cad");
-      if (cadNode) cadence = parseInt(cadNode.textContent, 10);
-
-      if (i > 0) {
-        const d = haversine(points[i - 1].lat, points[i - 1].lon, lat, lon);
-        totalDist += d;
-        const dEle = ele - points[i - 1].ele;
-        if (dEle > 0.5) totalElevationGain += dEle;
-        else if (dEle < -0.5) totalElevationLoss += Math.abs(dEle);
-      }
-      points.push({ lat, lon, ele, time, dist: totalDist, hr, cadence, power });
-    }
-
-    const title = xml.querySelector("trk > name")?.textContent || fileName.replace(/\.[^/.]+$/, "");
-    return Promise.resolve({ title, points, totalDist, totalElevationGain, totalElevationLoss, startTime: points[0]?.time || Date.now() });
-  }
-
-  // ==========================================
-  // 8. MOTORE MATEMATICO
-  // ==========================================
-  function processWorkout(raw, rFTPaSec, lthrVal, athleteId) {
+  async function askAIGenerateWorkout() {
     const cur = getCurrentAthlete();
-    const activeAthleteId = athleteId || cur.id;
-    const points = raw.points;
-    const rFTPaSpeed = 1000 / rFTPaSec;
-    let processedPoints = [];
-    let totalTimeSec = (points[points.length - 1].time - points[0].time) / 1000;
-    if (totalTimeSec <= 0) totalTimeSec = points.length;
-
-    let weightedPows = [];
-    let hrSum = 0, hrCount = 0, maxHR = 0;
-    let cadSum = 0, cadCount = 0, maxCad = 0;
-    let powerSum = 0, powerCount = 0, power4Sum = 0;
-
-    let uphill = { dist: 0, time: 0, ele: 0 };
-    let downhill = { dist: 0, time: 0, ele: 0 };
-    let flat = { dist: 0, time: 0, ele: 0 };
-
-    let paceZoneTimes = [0, 0, 0, 0, 0];
-    let hrZoneTimes = [0, 0, 0, 0, 0];
-    const hrZones = cur.hrConfig ? cur.hrConfig.zones : getAutoFrielZones(lthrVal);
-
-    let halfTime = totalTimeSec / 2;
-    let p1Sum = 0, hr1Sum = 0, c1 = 0;
-    let p2Sum = 0, hr2Sum = 0, c2 = 0;
-
-    for (let i = 1; i < points.length; i++) {
-      const dt = Math.max((points[i].time - points[i - 1].time) / 1000, 1);
-      const dx = points[i].dist - points[i - 1].dist;
-      const dz = points[i].ele - points[i - 1].ele;
-
-      const speed = dx / dt;
-      const slope = dx > 0 ? dz / dx : 0;
-
-      let costRatio = energyCostRunning(Math.max(-0.4, Math.min(0.4, slope))) / FLAT_COST;
-      if (costRatio < 0.5) costRatio = 0.5;
-
-      const ngpSpeed = speed * costRatio;
-      weightedPows.push(Math.pow(ngpSpeed, 4));
-
-      const hr = points[i].hr;
-      if (hr) {
-        hrSum += hr;
-        hrCount++;
-        if (hr > maxHR) maxHR = hr;
-
-        let placed = false;
-        for (let z = 0; z < hrZones.length; z++) {
-          if (hr >= hrZones[z].min && hr <= hrZones[z].max) {
-            hrZoneTimes[z] += dt;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          if (hr < hrZones[0].min) hrZoneTimes[0] += dt;
-          else hrZoneTimes[4] += dt;
-        }
-      }
-
-      const cad = points[i].cadence;
-      if (cad) {
-        cadSum += cad;
-        cadCount++;
-        if (cad > maxCad) maxCad = cad;
-      }
-
-      const pwr = points[i].power;
-      if (pwr) {
-        powerSum += pwr;
-        powerCount++;
-        power4Sum += Math.pow(pwr, 4);
-      }
-
-      if (slope > 0.02) {
-        uphill.dist += dx; uphill.time += dt; uphill.ele += Math.max(dz, 0);
-      } else if (slope < -0.02) {
-        downhill.dist += dx; downhill.time += dt; downhill.ele += Math.abs(Math.min(dz, 0));
-      } else {
-        flat.dist += dx; flat.time += dt; flat.ele += Math.abs(dz);
-      }
-
-      const speedRatio = speed / rFTPaSpeed;
-      if (speedRatio < 0.75) paceZoneTimes[0] += dt;
-      else if (speedRatio < 0.90) paceZoneTimes[1] += dt;
-      else if (speedRatio < 1.00) paceZoneTimes[2] += dt;
-      else if (speedRatio < 1.10) paceZoneTimes[3] += dt;
-      else paceZoneTimes[4] += dt;
-
-      const curElapsed = (points[i].time - points[0].time) / 1000;
-      if (hr && speed > 0.5) {
-        if (curElapsed <= halfTime) {
-          p1Sum += ngpSpeed; hr1Sum += hr; c1++;
-        } else {
-          p2Sum += ngpSpeed; hr2Sum += hr; c2++;
-        }
-      }
-
-      processedPoints.push({
-        lat: points[i].lat,
-        lon: points[i].lon,
-        distKm: points[i].dist / 1000,
-        elevation: Math.round(points[i].ele),
-        paceSec: speed > 0.5 ? Math.round(1000 / speed) : null,
-        ngpSec: ngpSpeed > 0.5 ? Math.round(1000 / ngpSpeed) : null,
-        hr: hr,
-        power: pwr
-      });
-    }
-
-    const avgPow4 = weightedPows.reduce((a, b) => a + b, 0) / weightedPows.length;
-    const globalNgpSpeed = Math.pow(avgPow4, 0.25);
-    const globalNgpSec = 1000 / globalNgpSpeed;
-    const intensityFactor = globalNgpSpeed / rFTPaSpeed;
-    const rTSS = (totalTimeSec * globalNgpSpeed * intensityFactor) / (rFTPaSpeed * 3600) * 100;
-
-    const vam = uphill.time > 60 ? Math.round((uphill.ele / uphill.time) * 3600) : 0;
-    const kmEffort = (raw.totalDist / 1000) + (raw.totalElevationGain / 100);
-
-    let decoupling = null;
-    if (c1 > 60 && c2 > 60) {
-      const ef1 = (p1Sum / c1) / (hr1Sum / c1);
-      const ef2 = (p2Sum / c2) / (hr2Sum / c2);
-      decoupling = Math.round(((ef1 - ef2) / ef1) * 1000) / 10;
-    }
-
-    const meanMaxWindows = [60, 300, 600, 1200, 1800, 3600];
-    const meanMaxResults = meanMaxWindows.map(sec => {
-      const res = getBestMeanMetrics(points, sec);
-      return {
-        sec,
-        label: sec >= 60 ? `${sec / 60}m` : `${sec}s`,
-        paceSec: res ? Math.round(1000 / res.speed) : null,
-        hr: res?.hr || null,
-        power: res?.power || null
-      };
-    });
-
-    return {
-      id: raw.id || ("act_" + raw.startTime + "_" + Math.random().toString(36).substr(2, 5)),
-      athleteId: activeAthleteId,
-      title: raw.title,
-      startTime: raw.startTime,
-      dateStr: new Date(raw.startTime).toISOString().split('T')[0],
-      totalDistKm: raw.totalDist / 1000,
-      totalElevationGain: Math.round(raw.totalElevationGain),
-      totalElevationLoss: Math.round(raw.totalElevationLoss || 0),
-      totalTimeSec,
-      avgPaceSec: 1000 / (raw.totalDist / totalTimeSec),
-      globalNgpSec,
-      intensityFactor,
-      rTSS: Math.round(rTSS * 10) / 10,
-      kmEffort: Math.round(kmEffort * 10) / 10,
-      vam,
-      avgHR: hrCount ? Math.round(hrSum / hrCount) : null,
-      maxHR: maxHR || null,
-      avgCadence: cadCount ? Math.round(cadSum / cadCount) : null,
-      maxCadence: maxCad || null,
-      avgPower: powerCount ? Math.round(powerSum / powerCount) : null,
-      npPower: powerCount ? Math.round(Math.pow(power4Sum / powerCount, 0.25)) : null,
-      decoupling,
-      uphill, downhill, flat,
-      paceZoneTimes,
-      hrZoneTimes,
-      meanMaxResults,
-      rpe: raw.rpe || null,
-      notes: raw.notes || "",
-      points: processedPoints
-    };
-  }
-
-  function getBestMeanMetrics(points, durationSec) {
-    if (!points || points.length < 2) return null;
-    let bestSpeed = 0, bestHR = null, bestPower = null;
-    let startIdx = 0;
-
-    for (let endIdx = 1; endIdx < points.length; endIdx++) {
-      while (startIdx < endIdx && ((points[endIdx].time - points[startIdx].time) / 1000) > durationSec) {
-        startIdx++;
-      }
-      const windowDuration = (points[endIdx].time - points[startIdx].time) / 1000;
-      if (windowDuration >= durationSec * 0.95 && windowDuration <= durationSec * 1.05) {
-        const windowDist = points[endIdx].dist - points[startIdx].dist;
-        const avgSpeed = windowDist / windowDuration;
-
-        if (avgSpeed > bestSpeed) {
-          bestSpeed = avgSpeed;
-          let sumHR = 0, cntHR = 0, sumP = 0, cntP = 0;
-          for (let k = startIdx; k <= endIdx; k++) {
-            if (points[k].hr) { sumHR += points[k].hr; cntHR++; }
-            if (points[k].power) { sumP += points[k].power; cntP++; }
-          }
-          bestHR = cntHR > 0 ? Math.round(sumHR / cntHR) : null;
-          bestPower = cntP > 0 ? Math.round(sumP / cntP) : null;
-        }
-      }
-    }
-    return bestSpeed > 0 ? { speed: bestSpeed, hr: bestHR, power: bestPower } : null;
-  }
-
-  // ==========================================
-  // 9. STIMA SOGLIA
-  // ==========================================
-  function detectThresholds(acts) {
-    if (!acts || !acts.length) return null;
-    let best60 = 0, hr60 = null;
-    let best30 = 0, hr30 = null;
-    let best20 = 0, hr20 = null;
-
-    for (const act of acts) {
-      if (!act.points || act.points.length < 60) continue;
-      const p60 = getBestMeanMetrics(act.points, 3600);
-      if (p60 && p60.speed > best60) { best60 = p60.speed; hr60 = p60.hr; }
-
-      const p30 = getBestMeanMetrics(act.points, 1800);
-      if (p30 && p30.speed > best30) { best30 = p30.speed; hr30 = p30.hr; }
-
-      const p20 = getBestMeanMetrics(act.points, 1200);
-      if (p20 && p20.speed > best20) { best20 = p20.speed; hr20 = p20.hr; }
-    }
-
-    let estimatedSpeed = 0, estimatedHR = null;
-    if (best60 > 0) { estimatedSpeed = best60; estimatedHR = hr60; }
-    else if (best30 > 0) { estimatedSpeed = best30; estimatedHR = hr30; }
-    else if (best20 > 0) { estimatedSpeed = best20 * 0.95; estimatedHR = hr20; }
-
-    if (estimatedSpeed <= 0) return null;
-    return { paceSec: Math.round(1000 / estimatedSpeed), hr: estimatedHR };
-  }
-
-  function checkThresholdUpdates() {
-    const cur = getCurrentAthlete();
-    const currentPaceSec = parsePaceToSec(document.getElementById('rfTPA').value);
-    const currentHR = parseInt(document.getElementById('lthr').value, 10) || 168;
-
-    const detected = detectThresholds(activities);
-    if (!detected) return;
-
-    const diffPace = Math.abs(detected.paceSec - currentPaceSec);
-    if (diffPace >= 3 || (detected.hr && Math.abs(detected.hr - currentHR) >= 3)) {
-      pendingThreshold = detected;
-      const paceStr = formatSecToPace(detected.paceSec);
-      const hrStr = detected.hr ? `${detected.hr} bpm` : "non rilevata";
-      
-      document.getElementById('thresholdAlertText').innerText = 
-        `Miglior prestazione per ${cur.name}: Passo Soglia ${paceStr} | FC Soglia ${hrStr}`;
-      document.getElementById('thresholdAlert').style.display = 'flex';
-    }
-  }
-
-  async function applyDetectedThresholds() {
-    if (!pendingThreshold) return;
-    const cur = getCurrentAthlete();
-    const newPaceStr = formatSecToPace(pendingThreshold.paceSec).replace('/km', '');
-    document.getElementById('rfTPA').value = newPaceStr;
-    cur.rfTPA = newPaceStr;
-
-    if (pendingThreshold.hr) {
-      document.getElementById('lthr').value = pendingThreshold.hr;
-      cur.lthr = pendingThreshold.hr;
-      updateHRZonesFromCurrentSettings();
-    }
-    saveAthletesToStorage();
-    document.getElementById('thresholdAlert').style.display = 'none';
-
-    const rFTPaSec = pendingThreshold.paceSec;
-    for (let act of activities) {
-      const rFTPaSpeed = 1000 / rFTPaSec;
-      const globalNgpSpeed = 1000 / act.globalNgpSec;
-      act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
-      act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
-      recomputeActivityHRZones(act, cur.hrConfig);
-      await dbSaveActivity(act);
-    }
-
-    if (selectedActivityId) selectActivity(selectedActivityId);
-    else showGlobalDashboard();
-
     const pmc = computePMC(activities);
-    renderPMCChart(pmc);
-    updateTrainingStatusBanner(pmc, activities);
+    const today = pmc.length ? pmc[pmc.length - 1] : { ctl: 0, atl: 0, tsb: 0 };
+
+    const prompt = `Coach running. Atleta ${cur.name}, TSB ${today.tsb}, rFTPa ${cur.rfTPA}/km. Proponi un workout strutturato in JSON valido con: {"title":"Nome","steps":[{"type":"Warmup","duration":15,"target":"Z2"},{"type":"Interval","duration":4,"target":"Z4"},{"type":"Recovery","duration":2,"target":"Z1"},{"type":"Cooldown","duration":10,"target":"Z1"}]}`;
+    try {
+      alert("L'IA sta elaborando la proposta di allenamento adatta alla tua forma...");
+      const reply = await callGemini(prompt);
+      const cleanJson = reply.replace(/```json/g, '').replace(/```/g, '').trim();
+      const plan = JSON.parse(cleanJson);
+
+      openWorkoutBuilderModal();
+      document.getElementById('wbTitle').value = plan.title || "Workout Proposto da Coach IA";
+      currentWorkoutSteps = plan.steps || [];
+      renderWorkoutStepRows();
+    } catch (e) {
+      alert("Errore generazione IA: " + e.message);
+    }
   }
 
   // ==========================================
-  // 10. PMC & STATISTICHE
+  // 6. GRAFICI, DB & BOOTSTRAP
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
     let tssByDate = {};
-    acts.forEach(a => {
-      tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + a.rTSS;
-    });
-
+    acts.forEach(a => { tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + a.rTSS; });
     const dates = Object.keys(tssByDate).sort();
     let cur = new Date(dates[0]);
     cur.setDate(cur.getDate() - 14);
     let end = new Date();
-
-    let ctl = 0, atl = 0;
-    let pmcSeries = [];
+    let ctl = 0, atl = 0, pmcSeries = [];
 
     while (cur <= end) {
       const dStr = cur.toISOString().split('T')[0];
       const dayTss = tssByDate[dStr] || 0;
-      const tsb = ctl - atl;
-
-      ctl = ctl + (dayTss - ctl) * CTL_DECAY;
-      atl = atl + (dayTss - atl) * ATL_DECAY;
-
-      pmcSeries.push({
-        date: dStr,
-        tss: dayTss,
-        ctl: Math.round(ctl * 10) / 10,
-        atl: Math.round(atl * 10) / 10,
-        tsb: Math.round(tsb * 10) / 10
-      });
+      ctl += (dayTss - ctl) * CTL_DECAY;
+      atl += (dayTss - atl) * ATL_DECAY;
+      pmcSeries.push({ date: dStr, tss: dayTss, ctl: Math.round(ctl*10)/10, atl: Math.round(atl*10)/10, tsb: Math.round((ctl-atl)*10)/10 });
       cur.setDate(cur.getDate() + 1);
     }
     return pmcSeries;
   }
 
   function updateTrainingStatusBanner(pmcSeries, acts) {
-    const cur = getCurrentAthlete();
-    if (!pmcSeries.length || !acts.length) {
-      document.getElementById('bannerCTL').innerText = "--";
-      document.getElementById('bannerATL').innerText = "--";
-      document.getElementById('bannerTSB').innerText = "--";
-      document.getElementById('bannerRamp').innerText = "--";
-      document.getElementById('bannerKm7d').innerText = "-- km";
-      document.getElementById('bannerTSS7d').innerText = "--";
-      document.getElementById('statusBadge').innerText = "Dati insufficienti";
-      document.getElementById('statusBadge').style.background = "rgba(148, 163, 184, 0.2)";
-      document.getElementById('statusBadge').style.color = "var(--muted)";
-      document.getElementById('statusDesc').innerText = `Carica le sessioni di ${cur.name} per calcolare lo stato di forma.`;
-      return;
-    }
-
+    if (!pmcSeries.length) return;
     const today = pmcSeries[pmcSeries.length - 1];
     document.getElementById('bannerCTL').innerText = today.ctl;
     document.getElementById('bannerATL').innerText = today.atl;
     document.getElementById('bannerTSB').innerText = (today.tsb > 0 ? '+' : '') + today.tsb;
-
-    let rampRateStr = "--";
-    if (pmcSeries.length >= 8) {
-      const ctl7DaysAgo = pmcSeries[pmcSeries.length - 8].ctl;
-      const diff = Math.round((today.ctl - ctl7DaysAgo) * 10) / 10;
-      rampRateStr = `${diff > 0 ? '+' : ''}${diff} /sett`;
-      if (diff > 8) rampRateStr += " (Elevato ⚠️)";
-    }
-    document.getElementById('bannerRamp').innerText = rampRateStr;
-
-    const nowTime = Date.now();
-    const sevenDaysMs = 7 * 24 * 3600 * 1000;
-    const recentActs = acts.filter(a => (nowTime - a.startTime) <= sevenDaysMs);
-
-    const km7d = recentActs.reduce((acc, a) => acc + a.totalDistKm, 0);
-    const tss7d = recentActs.reduce((acc, a) => acc + a.rTSS, 0);
-
-    document.getElementById('bannerKm7d').innerText = `${km7d.toFixed(1)} km`;
-    document.getElementById('bannerTSS7d').innerText = Math.round(tss7d);
-
-    const badge = document.getElementById('statusBadge');
-    const desc = document.getElementById('statusDesc');
-    const tsb = today.tsb;
-
-    if (tsb > 25) {
-      badge.innerText = "Transizione / Recupero Elevato";
-      badge.style.background = "rgba(148, 163, 184, 0.2)";
-      badge.style.color = "#94a3b8";
-      desc.innerText = "Fatica assente ma fitness in calo. Riposo prolungato post-obiettivo.";
-    } else if (tsb >= 5 && tsb <= 25) {
-      badge.innerText = "Gara / Picco di Forma (Race Ready)";
-      badge.style.background = "rgba(16, 185, 129, 0.2)";
-      badge.style.color = "var(--accent-primary)";
-      desc.innerText = "Fatica acuta assorbita e fitness preservata. Condizione ottimale per gareggiare.";
-    } else if (tsb >= -10 && tsb < 5) {
-      badge.innerText = "Neutro / Mantenimento";
-      badge.style.background = "rgba(56, 189, 248, 0.2)";
-      badge.style.color = "var(--accent-ctl)";
-      desc.innerText = "Equilibrio tra freschezza e stimolo. Ideale per rifiniture a ritmo gara.";
-    } else if (tsb >= -30 && tsb < -10) {
-      badge.innerText = "Costruzione Ottimale (Productive)";
-      badge.style.background = "rgba(245, 158, 11, 0.2)";
-      badge.style.color = "#f59e0b";
-      desc.innerText = "Fase di stimolo allenante sostenibile per incrementare la fitness di base.";
-    } else {
-      badge.innerText = "Allerta Sovraccarico (Overload Risk)";
-      badge.style.background = "rgba(239, 68, 68, 0.2)";
-      badge.style.color = "var(--danger)";
-      desc.innerText = "Fatica accumulata troppo velocemente. Alto rischio overtraining/infortuni.";
-    }
+    document.getElementById('statusBadge').innerText = today.tsb >= -10 && today.tsb <= 20 ? "Forma Ottimale" : (today.tsb < -25 ? "Fatica Elevata" : "Recupero");
   }
 
   function renderPMCChart(pmcData) {
@@ -2119,846 +1034,79 @@ Fornisci un debriefing tecnico strutturato:
       data: {
         labels: pmcData.map(d => d.date),
         datasets: [
-          { type: 'line', label: 'CTL (Fitness)', data: pmcData.map(d => d.ctl), borderColor: '#38bdf8', borderWidth: 2.2, pointRadius: 0 },
-          { type: 'line', label: 'ATL (Fatigue)', data: pmcData.map(d => d.atl), borderColor: '#f87171', borderWidth: 1.8, pointRadius: 0 },
-          { type: 'line', label: 'TSB (Form)', data: pmcData.map(d => d.tsb), borderColor: '#fbbf24', backgroundColor: 'rgba(251, 191, 36, 0.08)', fill: true, borderWidth: 1.5, pointRadius: 0 },
+          { type: 'line', label: 'CTL (Fitness)', data: pmcData.map(d => d.ctl), borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0 },
+          { type: 'line', label: 'ATL (Fatica)', data: pmcData.map(d => d.atl), borderColor: '#f87171', borderWidth: 1.8, pointRadius: 0 },
+          { type: 'line', label: 'TSB (Forma)', data: pmcData.map(d => d.tsb), borderColor: '#fbbf24', fill: true, backgroundColor: 'rgba(251, 191, 36, 0.08)', pointRadius: 0 },
           { type: 'bar', label: 'TSS', data: pmcData.map(d => d.tss), backgroundColor: 'rgba(16, 185, 129, 0.45)', yAxisID: 'yTSS' }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { grid: { color: '#1a2333' }, ticks: { color: '#8493a8' } },
-          y: { grid: { color: '#243247' }, ticks: { color: '#8493a8' } },
-          yTSS: { position: 'right', grid: { display: false }, ticks: { color: '#8493a8' } }
+          x: { grid: { color: '#1a2333' } },
+          y: { grid: { color: '#243247' } },
+          yTSS: { position: 'right', display: false }
         }
       }
     });
   }
 
-  // ==========================================
-  // 11. VISTA GLOBALE
-  // ==========================================
   function showGlobalDashboard() {
     selectedActivityId = null;
-    renderActivityList();
-    const cur = getCurrentAthlete();
-
-    document.getElementById('viewContextLabel').innerText = "PANORAMICA GENERALE";
-    document.getElementById('viewContextTitle').innerText = `Riepilogo Carriera di ${cur.name}`;
-    document.getElementById('btnBackToGlobal').style.display = "none";
-    document.getElementById('btnAskAIActivity').style.display = "none";
-    document.getElementById('aiActivityBox').style.display = "none";
-    document.getElementById('notesBoxContainer').style.display = "none";
-    document.getElementById('mapBoxContainer').style.display = "block";
-    document.getElementById('mapTitle').innerText = `Mappa Ultima Sessione (${cur.name})`;
-    document.getElementById('workoutChartTitle').innerText = `Volumi Mensili Storici (${cur.name})`;
-
-    if (!activities.length) {
-      document.getElementById('valDist').innerText = "--";
-      document.getElementById('valElevation').innerText = "D+ -- m | D- -- m";
-      document.getElementById('valKmEffort').innerText = "--";
-      document.getElementById('valTime').innerText = "--";
-      document.getElementById('valPace').innerText = "Passo: --";
-      document.getElementById('valNGP').innerText = "--";
-      document.getElementById('valIF').innerText = "IF: --";
-      document.getElementById('valTSS').innerText = "--";
-      document.getElementById('valVAM').innerText = "--";
-      document.getElementById('valHR').innerText = "--";
-      document.getElementById('valHRMax').innerText = "Max: --";
-      document.getElementById('valCadence').innerText = "--";
-      document.getElementById('valCadenceMax').innerText = "Max: --";
-      document.getElementById('valPower').innerText = "--";
-      document.getElementById('valNP').innerText = "NP: --";
-      document.getElementById('valDecoupling').innerText = "--";
-
-      document.getElementById('terrainBreakdownBody').innerHTML = `<tr><td colspan="6" style="color: var(--muted); text-align: center;">Nessun dato per questo atleta</td></tr>`;
-      document.getElementById('meanMaxTableBody').innerHTML = `<tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>`;
-      document.getElementById('paceZonesContainer').innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Nessun dato</p>`;
-      document.getElementById('hrZonesContainer').innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Nessun dato</p>`;
-      if (workoutChartInstance) workoutChartInstance.destroy();
-      if (mapPolyline && mapInstance) {
-        mapInstance.removeLayer(mapPolyline);
-        mapPolyline = null;
-      }
-      if (mapCursorMarker && mapInstance) {
-        mapInstance.removeLayer(mapCursorMarker);
-        mapCursorMarker = null;
-      }
-      return;
-    }
-
-    let totDist = 0, totDPlus = 0, totDLoss = 0, totTime = 0, totTSS = 0;
-    let totPaceTimes = [0, 0, 0, 0, 0];
-    let totHrTimes = [0, 0, 0, 0, 0];
-    let uTot = { dist: 0, time: 0, ele: 0 };
-    let dTot = { dist: 0, time: 0, ele: 0 };
-    let fTot = { dist: 0, time: 0, ele: 0 };
-
-    let hrSum = 0, hrCount = 0, globalMaxHR = 0;
-    let cadSum = 0, cadCount = 0, globalMaxCad = 0;
-    let pwrSum = 0, pwrCount = 0;
-    let maxVAM = 0;
-
-    let allTimeMeanMax = {
-      60: { speed: 0, hr: null, power: null },
-      300: { speed: 0, hr: null, power: null },
-      600: { speed: 0, hr: null, power: null },
-      1200: { speed: 0, hr: null, power: null },
-      1800: { speed: 0, hr: null, power: null },
-      3600: { speed: 0, hr: null, power: null }
-    };
-
-    activities.forEach(a => {
-      totDist += a.totalDistKm;
-      totDPlus += a.totalElevationGain;
-      totDLoss += a.totalElevationLoss;
-      totTime += a.totalTimeSec;
-      totTSS += a.rTSS;
-
-      if (a.vam > maxVAM) maxVAM = a.vam;
-      if (a.avgHR) { hrSum += a.avgHR; hrCount++; }
-      if (a.maxHR && a.maxHR > globalMaxHR) globalMaxHR = a.maxHR;
-      if (a.avgCadence) { cadSum += a.avgCadence; cadCount++; }
-      if (a.maxCadence && a.maxCadence > globalMaxCad) globalMaxCad = a.maxCadence;
-      if (a.avgPower) { pwrSum += a.avgPower; pwrCount++; }
-
-      if (a.uphill) { uTot.dist += a.uphill.dist; uTot.time += a.uphill.time; uTot.ele += a.uphill.ele; }
-      if (a.downhill) { dTot.dist += a.downhill.dist; dTot.time += a.downhill.time; dTot.ele += a.downhill.ele; }
-      if (a.flat) { fTot.dist += a.flat.dist; fTot.time += a.flat.time; fTot.ele += a.flat.ele; }
-
-      if (a.paceZoneTimes) { a.paceZoneTimes.forEach((t, i) => totPaceTimes[i] += t); }
-      if (a.hrZoneTimes) { a.hrZoneTimes.forEach((t, i) => totHrTimes[i] += t); }
-
-      if (a.meanMaxResults) {
-        a.meanMaxResults.forEach(m => {
-          if (m.paceSec && (!allTimeMeanMax[m.sec].speed || (1000 / m.paceSec) > allTimeMeanMax[m.sec].speed)) {
-            allTimeMeanMax[m.sec].speed = 1000 / m.paceSec;
-            allTimeMeanMax[m.sec].hr = m.hr;
-            allTimeMeanMax[m.sec].power = m.power;
-          }
-        });
-      }
-    });
-
-    const totKmEffort = totDist + (totDPlus / 100);
-    const avgGlobalPaceSec = totDist > 0 ? (totTime / totDist) : 0;
-
-    document.getElementById('lblDist').innerText = "Distanza & D+ Totale";
-    document.getElementById('valDist').innerText = `${totDist.toFixed(1)} km`;
-    document.getElementById('valElevation').innerText = `D+ ${totDPlus}m | D- ${totDLoss}m`;
-
-    document.getElementById('lblKmEffort').innerText = "Km-Sforzo Totali";
-    document.getElementById('valKmEffort').innerText = `${Math.round(totKmEffort)} km`;
-    document.getElementById('subKmEffort').innerText = `Carriera ${cur.name}`;
-
-    document.getElementById('lblTime').innerText = "Tempo Totale Corsa";
-    document.getElementById('valTime').innerText = formatDuration(totTime);
-    document.getElementById('valPace').innerText = `Passo Medio: ${formatSecToPace(avgGlobalPaceSec)}`;
-
-    document.getElementById('lblNGP').innerText = "Sessioni Totali";
-    document.getElementById('valNGP').innerText = activities.length;
-    document.getElementById('valIF').innerText = `Media: ${(totDist / (activities.length || 1)).toFixed(1)} km/uscita`;
-
-    document.getElementById('lblTSS').innerText = "Training Stress Totale";
-    document.getElementById('valTSS').innerText = Math.round(totTSS);
-    document.getElementById('subTSS').innerText = `TSS Cumulato`;
-
-    document.getElementById('lblVAM').innerText = "VAM Record Salita";
-    document.getElementById('valVAM').innerText = maxVAM ? `${maxVAM} m/h` : '--';
-    document.getElementById('subVAM').innerText = `Miglior VAM registrata`;
-
-    document.getElementById('valHR').innerText = hrCount ? `${Math.round(hrSum / hrCount)} bpm` : '--';
-    document.getElementById('valHRMax').innerText = globalMaxHR ? `Max Assoluto: ${globalMaxHR} bpm` : 'Max: --';
-
-    document.getElementById('valCadence').innerText = cadCount ? `${Math.round(cadSum / cadCount)} spm` : '--';
-    document.getElementById('valCadenceMax').innerText = globalMaxCad ? `Max: ${globalMaxCad} spm` : 'Max: --';
-
-    document.getElementById('valPower').innerText = pwrCount ? `${Math.round(pwrSum / pwrCount)} W` : '--';
-    document.getElementById('valNP').innerText = 'NP: --';
-
-    document.getElementById('lblDecoupling').innerText = "Corse Archiviate";
-    document.getElementById('valDecoupling').innerText = `${activities.length} file`;
-    document.getElementById('valDecoupling').style.color = "var(--text)";
-    document.getElementById('subDecoupling').innerText = `Profilo ${cur.name}`;
-
-    renderCustomTerrainTable(uTot, dTot, fTot, `Ripartizione Terreno (${cur.name})`);
-    renderMonthlyVolumeChart(activities);
-
-    const sorted = [...activities].sort((a, b) => b.startTime - a.startTime);
-    if (sorted.length) initOrUpdateMap(sorted[0]);
-
-    renderAllTimeMeanMaxTable(allTimeMeanMax);
-    renderDualZonesDirect(totPaceTimes, totHrTimes, "Distribuzione Zone Passo Totale", "Distribuzione Zone Cardio Totale");
-  }
-
-  // ==========================================
-  // 12. VISTA SINGOLA SESSIONE
-  // ==========================================
-  function selectActivity(id) {
-    selectedActivityId = id;
-    const act = activities.find(a => a.id === id);
-    if (!act) return;
-
-    renderActivityList();
-
-    document.getElementById('viewContextLabel').innerText = `DETTAGLIO SESSIONE (${act.dateStr})`;
-    document.getElementById('viewContextTitle').innerText = act.title;
-    document.getElementById('btnBackToGlobal').style.display = "flex";
-    document.getElementById('btnAskAIActivity').style.display = "flex";
-    document.getElementById('aiActivityBox').style.display = "none";
-    document.getElementById('notesBoxContainer').style.display = "flex";
-    document.getElementById('mapBoxContainer').style.display = "block";
-    document.getElementById('mapTitle').innerText = `Mappa Percorso: ${act.title}`;
-
-    document.getElementById('lblDist').innerText = "Distanza & D+";
-    document.getElementById('valDist').innerText = `${act.totalDistKm.toFixed(2)} km`;
-    document.getElementById('valElevation').innerText = `D+ ${act.totalElevationGain}m | D- ${act.totalElevationLoss}m`;
-
-    document.getElementById('lblKmEffort').innerText = "Km-Sforzo (ITRA/UTMB)";
-    document.getElementById('valKmEffort').innerText = `${act.kmEffort} km`;
-    document.getElementById('subKmEffort').innerText = "Dist + (D+ / 100)";
-
-    document.getElementById('lblTime').innerText = "Tempo Movimento";
-    document.getElementById('valTime').innerText = formatDuration(act.totalTimeSec);
-    document.getElementById('valPace').innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
-
-    document.getElementById('lblNGP').innerText = "NGP & IF";
-    document.getElementById('valNGP').innerText = formatSecToPace(act.globalNgpSec);
-    document.getElementById('valIF').innerText = `IF: ${act.intensityFactor.toFixed(2)}`;
-
-    document.getElementById('lblTSS').innerText = "Training Stress";
-    document.getElementById('valTSS').innerText = act.rTSS;
-    document.getElementById('subTSS').innerText = "rTSS";
-
-    document.getElementById('lblVAM').innerText = "VAM Media Salita";
-    document.getElementById('valVAM').innerText = act.vam ? `${act.vam} m/h` : '--';
-    document.getElementById('subVAM').innerText = "m/h verticali";
-
-    document.getElementById('valHR').innerText = act.avgHR ? `${act.avgHR} bpm` : '--';
-    document.getElementById('valHRMax').innerText = act.maxHR ? `Max: ${act.maxHR} bpm` : 'Max: --';
-
-    document.getElementById('valCadence').innerText = act.avgCadence ? `${act.avgCadence} spm` : '--';
-    document.getElementById('valCadenceMax').innerText = act.maxCadence ? `Max: ${act.maxCadence} spm` : 'Max: --';
-
-    document.getElementById('valPower').innerText = act.avgPower ? `${act.avgPower} W` : '--';
-    document.getElementById('valNP').innerText = act.npPower ? `NP: ${act.npPower} W` : 'NP: --';
-
-    document.getElementById('lblDecoupling').innerText = "Aerobic Decoupling";
-    if (act.decoupling !== null) {
-      document.getElementById('valDecoupling').innerText = `${act.decoupling > 0 ? '+' : ''}${act.decoupling}%`;
-      document.getElementById('valDecoupling').style.color = Math.abs(act.decoupling) <= 5 ? 'var(--accent-primary)' : 'var(--accent-atl)';
-    } else {
-      document.getElementById('valDecoupling').innerText = '--';
-      document.getElementById('valDecoupling').style.color = 'var(--text)';
-    }
-    document.getElementById('subDecoupling').innerText = "Pw:Hr / Drift cardiaco";
-
-    document.getElementById('actRPE').value = act.rpe || "";
-    document.getElementById('actNotes').value = act.notes || "";
-
-    renderWorkoutChart(act);
-    initOrUpdateMap(act);
-    renderCustomTerrainTable(act.uphill, act.downhill, act.flat, `Ripartizione Terreno (${act.title})`);
-    renderMeanMaxTable(act);
-    renderDualZonesDirect(act.paceZoneTimes, act.hrZoneTimes, "Zone di Passo Sessione", "Zone Cardio Sessione");
-  }
-
-  // ==========================================
-  // 13. TABELLE & ZONE
-  // ==========================================
-  function renderCustomTerrainTable(u, d, f, title) {
-    document.getElementById('terrainTitle').innerText = title;
-    const tbody = document.getElementById('terrainBreakdownBody');
-
-    const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
-    const dPace = d.dist > 10 ? formatSecToPace(d.time / (d.dist / 1000)) : "--";
-    const fPace = f.dist > 10 ? formatSecToPace(f.time / (f.dist / 1000)) : "--";
-
-    const uVam = u.time > 60 ? Math.round((u.ele / u.time) * 3600) + " m/h" : "--";
-    const dVam = d.time > 60 ? Math.round((d.ele / d.time) * 3600) + " m/h" : "--";
-
-    tbody.innerHTML = `
-      <tr>
-        <td style="font-weight: 600; color: #f87171;">🧗 Salita (> +2%)</td>
-        <td>${(u.dist / 1000).toFixed(2)} km</td>
-        <td>${formatDuration(u.time)}</td>
-        <td>+${Math.round(u.ele)} m</td>
-        <td>${uPace}</td>
-        <td style="color: var(--accent-tsb); font-weight: 600;">${uVam}</td>
-      </tr>
-      <tr>
-        <td style="font-weight: 600; color: #38bdf8;">🏃 Piano (-2% / +2%)</td>
-        <td>${(f.dist / 1000).toFixed(2)} km</td>
-        <td>${formatDuration(f.time)}</td>
-        <td>±${Math.round(f.ele)} m</td>
-        <td>${fPace}</td>
-        <td>--</td>
-      </tr>
-      <tr>
-        <td style="font-weight: 600; color: #10b981;">⛷️ Discesa (< -2%)</td>
-        <td>${(d.dist / 1000).toFixed(2)} km</td>
-        <td>${formatDuration(d.time)}</td>
-        <td>-${Math.round(d.ele)} m</td>
-        <td>${dPace}</td>
-        <td>${dVam}</td>
-      </tr>
-    `;
-  }
-
-  function renderMeanMaxTable(act) {
-    document.getElementById('meanMaxTitle').innerText = `Migliori Finestre Sessione: ${act.title}`;
-    const tbody = document.getElementById('meanMaxTableBody');
-    if (!act.meanMaxResults || !act.meanMaxResults.length) {
-      tbody.innerHTML = `<tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = act.meanMaxResults.map(m => `
-      <tr>
-        <td style="font-weight: 600;">${m.label}</td>
-        <td style="color: var(--accent-ctl); font-weight: 600;">${formatSecToPace(m.paceSec)}</td>
-        <td style="color: #ef4444;">${m.hr ? m.hr + ' bpm' : '--'}</td>
-        <td style="color: #c084fc;">${m.power ? m.power + ' W' : '--'}</td>
-      </tr>
-    `).join('');
-  }
-
-  function renderAllTimeMeanMaxTable(allTimeMap) {
-    const cur = getCurrentAthlete();
-    document.getElementById('meanMaxTitle').innerText = `Record Assoluti di Prestazione (${cur.name})`;
-    const tbody = document.getElementById('meanMaxTableBody');
-    const windows = [
-      { sec: 60, label: "1m" },
-      { sec: 300, label: "5m" },
-      { sec: 600, label: "10m" },
-      { sec: 1200, label: "20m" },
-      { sec: 1800, label: "30m" },
-      { sec: 3600, label: "60m" }
-    ];
-
-    tbody.innerHTML = windows.map(w => {
-      const rec = allTimeMap[w.sec];
-      const paceStr = rec.speed > 0 ? formatSecToPace(Math.round(1000 / rec.speed)) : "--";
-      const hrStr = rec.hr ? `${rec.hr} bpm` : "--";
-      const pwrStr = rec.power ? `${rec.power} W` : "--";
-
-      return `
-        <tr>
-          <td style="font-weight: 600;">${w.label}</td>
-          <td style="color: var(--accent-ctl); font-weight: 600;">${paceStr}</td>
-          <td style="color: #ef4444;">${hrStr}</td>
-          <td style="color: #c084fc;">${pwrStr}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  function renderDualZonesDirect(paceZoneTimes, hrZoneTimes, paceTitle, hrTitle) {
-    const cur = getCurrentAthlete();
-    document.getElementById('paceZoneTitle').innerText = paceTitle;
-    document.getElementById('hrZoneTitle').innerText = hrTitle;
-
-    const paceCont = document.getElementById('paceZonesContainer');
-    const paceLabels = [
-      { name: "Z1 Recupero", color: "var(--z1)" },
-      { name: "Z2 Aerobico", color: "var(--z2)" },
-      { name: "Z3 Tempo", color: "var(--z3)" },
-      { name: "Z4 Soglia", color: "var(--z4)" },
-      { name: "Z5 VO2max+", color: "var(--z5)" }
-    ];
-    const totPace = paceZoneTimes ? paceZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
-    paceCont.innerHTML = paceLabels.map((z, idx) => {
-      const t = paceZoneTimes ? (paceZoneTimes[idx] || 0) : 0;
-      const pct = Math.round((t / totPace) * 100);
-      return `
-        <div class="zone-bar-wrapper">
-          <div class="zone-label" title="${z.name}">${z.name}</div>
-          <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
-          <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
-        </div>
-      `;
-    }).join('');
-
-    const hrCont = document.getElementById('hrZonesContainer');
-    const totHR = hrZoneTimes ? hrZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
-    const currentZones = cur.hrConfig ? cur.hrConfig.zones : getAutoFrielZones(cur.lthr);
-
-    if (hrZoneTimes && hrZoneTimes.some(v => v > 0)) {
-      hrCont.innerHTML = currentZones.map((z, idx) => {
-        const t = hrZoneTimes[idx] || 0;
-        const pct = Math.round((t / totHR) * 100);
-        const rangeText = `${z.min}-${z.max} bpm`;
-        return `
-          <div class="zone-bar-wrapper">
-            <div class="zone-label" title="${z.name} (${rangeText})">
-              ${z.name} <span style="font-size: 0.65rem; color: var(--muted); font-weight: normal;">(${rangeText})</span>
-            </div>
-            <div class="zone-track"><div class="zone-fill" style="width: ${pct}%; background-color: ${z.color};"></div></div>
-            <div class="zone-meta">${formatDuration(t)} (${pct}%)</div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      hrCont.innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Dati cardio non presenti.</p>`;
-    }
-  }
-
-  // ==========================================
-  // 14. GRAFICI TELEMETRIA
-  // ==========================================
-  function renderWorkoutChart(act) {
-    const ctx = document.getElementById('workoutChart').getContext('2d');
-    document.getElementById('workoutChartTitle').innerText = `Telemetria Corsa: ${act.title} (${act.dateStr})`;
-
-    const step = Math.max(1, Math.floor(act.points.length / 280));
-    const sampled = act.points.filter((_, idx) => idx % step === 0);
-
-    const labels = sampled.map(p => p.distKm.toFixed(1) + 'k');
-    const eleData = sampled.map(p => p.elevation);
-    const paceData = sampled.map(p => p.paceSec ? Math.min(p.paceSec, 600) / 60 : null);
-    const ngpData = sampled.map(p => p.ngpSec ? Math.min(p.ngpSec, 600) / 60 : null);
-    const hrData = sampled.map(p => p.hr);
-    const pwrData = sampled.map(p => p.power);
-
-    if (workoutChartInstance) workoutChartInstance.destroy();
-
-    let datasets = [
-      { label: 'Quota (m)', data: eleData, borderColor: '#64748b', backgroundColor: 'rgba(100, 116, 139, 0.15)', fill: true, yAxisID: 'yElevation', pointRadius: 0 },
-      { label: 'Passo (min/km)', data: paceData, borderColor: '#f59e0b', borderWidth: 1.5, yAxisID: 'yPace', pointRadius: 0 },
-      { label: 'NGP (min/km)', data: ngpData, borderColor: '#38bdf8', borderWidth: 1.8, yAxisID: 'yPace', pointRadius: 0 }
-    ];
-
-    if (act.avgHR) {
-      datasets.push({ label: 'Cardio (bpm)', data: hrData, borderColor: '#ef4444', borderWidth: 1.2, yAxisID: 'yHR', pointRadius: 0 });
-    }
-    if (act.avgPower) {
-      datasets.push({ label: 'Potenza (W)', data: pwrData, borderColor: '#c084fc', borderWidth: 1.2, yAxisID: 'yPwr', pointRadius: 0 });
-    }
-
-    workoutChartInstance = new Chart(ctx, {
-      type: 'line',
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        onHover: (e, activeElements) => {
-          if (activeElements && activeElements.length > 0) {
-            const index = activeElements[0].index;
-            const pt = sampled[index];
-            if (pt && mapCursorMarker) {
-              mapCursorMarker.setLatLng([pt.lat, pt.lon]);
-            }
-          }
-        },
-        scales: {
-          x: { grid: { color: '#1a2333' }, ticks: { color: '#8493a8' } },
-          yElevation: { position: 'right', grid: { display: false }, ticks: { color: '#8493a8' } },
-          yHR: { position: 'right', display: false, min: 80, max: 210 },
-          yPwr: { position: 'right', display: false, min: 100, max: 600 },
-          yPace: {
-            position: 'left',
-            reverse: true,
-            grid: { color: '#243247' },
-            ticks: {
-              color: '#8493a8',
-              callback: v => `${Math.floor(v)}:${Math.round((v % 1) * 60).toString().padStart(2, '0')}`
-            }
-          }
-        }
-      }
-    });
-  }
-
-  function renderMonthlyVolumeChart(acts) {
-    const ctx = document.getElementById('workoutChart').getContext('2d');
-    if (workoutChartInstance) workoutChartInstance.destroy();
-
-    let monthly = {};
-    acts.forEach(a => {
-      const monthKey = a.dateStr.substring(0, 7);
-      if (!monthly[monthKey]) monthly[monthKey] = { dist: 0, ele: 0 };
-      monthly[monthKey].dist += a.totalDistKm;
-      monthly[monthKey].ele += a.totalElevationGain;
-    });
-
-    const sortedMonths = Object.keys(monthly).sort();
-    const kmData = sortedMonths.map(m => Math.round(monthly[m].dist));
-    const eleData = sortedMonths.map(m => Math.round(monthly[m].ele));
-
-    workoutChartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: sortedMonths,
-        datasets: [
-          {
-            label: 'Chilometri (km)',
-            data: kmData,
-            backgroundColor: 'rgba(56, 189, 248, 0.65)',
-            borderColor: '#38bdf8',
-            borderWidth: 1,
-            yAxisID: 'yKm'
-          },
-          {
-            label: 'Dislivello D+ (m)',
-            data: eleData,
-            backgroundColor: 'rgba(245, 158, 11, 0.55)',
-            borderColor: '#f59e0b',
-            borderWidth: 1,
-            yAxisID: 'yEle'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-          x: { grid: { color: '#1a2333' }, ticks: { color: '#8493a8' } },
-          yKm: {
-            position: 'left',
-            grid: { color: '#243247' },
-            ticks: { color: '#38bdf8', callback: v => v + ' km' }
-          },
-          yEle: {
-            position: 'right',
-            grid: { display: false },
-            ticks: { color: '#f59e0b', callback: v => v + ' m' }
-          }
-        }
-      }
-    });
-  }
-
-  // ==========================================
-  // 15. MAPPA & NOTE
-  // ==========================================
-  function initOrUpdateMap(act) {
-    if (!act || !act.points || !act.points.length) return;
-    const latLngs = act.points.map(p => [p.lat, p.lon]);
-    if (!latLngs.length) return;
-
-    if (!mapInstance) {
-      mapInstance = L.map('map', { zoomControl: false }).setView(latLngs[0], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19
-      }).addTo(mapInstance);
-
-      mapPolyline = L.polyline(latLngs, { color: '#38bdf8', weight: 3 }).addTo(mapInstance);
-      mapCursorMarker = L.circleMarker(latLngs[0], {
-        radius: 6,
-        fillColor: '#ef4444',
-        color: '#ffffff',
-        weight: 2,
-        fillOpacity: 1
-      }).addTo(mapInstance);
-    } else {
-      mapPolyline.setLatLngs(latLngs);
-      mapCursorMarker.setLatLng(latLngs[0]);
-    }
-    mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [20, 20] });
-  }
-
-  async function saveActivityNotes() {
-    if (!selectedActivityId) return;
-    const act = activities.find(a => a.id === selectedActivityId);
-    if (!act) return;
-
-    act.rpe = document.getElementById('actRPE').value;
-    act.notes = document.getElementById('actNotes').value;
-    await dbSaveActivity(act);
-  }
-
-  function renderActivityList() {
-    const listEl = document.getElementById('activityList');
     document.getElementById('actCount').innerText = activities.length;
+    const listEl = document.getElementById('activityList');
 
     if (!activities.length) {
-      listEl.innerHTML = `<p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente per questo atleta.</p>`;
+      listEl.innerHTML = `<p style="padding:14px; color:var(--muted); font-size:0.8rem;">Nessuna attività</p>`;
       return;
     }
 
-    listEl.innerHTML = activities
-      .sort((a, b) => b.startTime - a.startTime)
-      .map(act => `
-        <div class="activity-row ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
-          <div style="flex: 1; min-width: 0; margin-right: 8px;">
-            <div class="act-date">${act.dateStr}</div>
-            <div class="act-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${act.title}</div>
-            <div class="act-stats">${act.totalDistKm.toFixed(1)} km | D+ ${act.totalElevationGain}m | ${formatSecToPace(act.avgPaceSec)}</div>
-          </div>
-          <div class="act-actions">
-            <span class="badge-tss">${act.rTSS} TSS</span>
-            <button class="btn-row-action" title="Sposta ad un altro atleta" onclick="promptReassignAthlete(event, '${act.id}')">🔄</button>
-            <button class="btn-row-action btn-del" title="Elimina corsa" onclick="deleteActivity(event, '${act.id}')">&times;</button>
-          </div>
+    listEl.innerHTML = activities.slice().sort((a,b)=>b.startTime-a.startTime).map(act => `
+      <div class="activity-row">
+        <div>
+          <div class="act-date">${act.dateStr}</div>
+          <div class="act-title">${act.title}</div>
+          <div class="act-stats">${act.totalDistKm.toFixed(1)} km | D+ ${act.totalElevationGain}m</div>
         </div>
-      `).join('');
+        <span class="badge-tss">${act.rTSS} TSS</span>
+      </div>
+    `).join('');
+
+    const totDist = activities.reduce((s,a)=>s+a.totalDistKm,0);
+    const totDPlus = activities.reduce((s,a)=>s+a.totalElevationGain,0);
+    const totTSS = activities.reduce((s,a)=>s+a.rTSS,0);
+
+    document.getElementById('valDist').innerText = `${totDist.toFixed(1)} km`;
+    document.getElementById('valElevation').innerText = `D+ ${totDPlus}m`;
+    document.getElementById('valKmEffort').innerText = `${Math.round(totDist + (totDPlus/100))} km`;
+    document.getElementById('valTSS').innerText = Math.round(totTSS);
   }
 
-  async function deleteActivity(event, id) {
-    event.stopPropagation();
-    if (!confirm("Eliminare questa sessione?")) return;
-    await dbDeleteActivity(id);
-    allActivities = allActivities.filter(a => a.id !== id);
-    filterActivitiesForCurrentAthlete();
-  }
-
-  async function handleFiles(files) {
-    const cur = getCurrentAthlete();
-    const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
-    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
-
-    for (const file of files) {
-      try {
-        const raw = await parseFile(file);
-
-        if (raw.isMultiExport) {
-          if (raw.athletes && Array.isArray(raw.athletes)) {
-            athletes = raw.athletes;
-            saveAthletesToStorage();
-            renderAthleteSelector();
-          }
-          if (raw.activities && Array.isArray(raw.activities)) {
-            for (let item of raw.activities) {
-              await dbSaveActivity(item);
-              const idx = allActivities.findIndex(a => a.id === item.id);
-              if (idx >= 0) allActivities[idx] = item;
-              else allActivities.push(item);
-            }
-          }
-        } else if (raw.isCollection) {
-          for (let item of raw.list) {
-            let processed;
-            if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
-              processed = processWorkout(item, rFTPaSec, lthrVal, cur.id);
-            } else {
-              processed = item;
-              if (!processed.athleteId) processed.athleteId = cur.id;
-            }
-            await dbSaveActivity(processed);
-            const idx = allActivities.findIndex(a => a.id === processed.id);
-            if (idx >= 0) allActivities[idx] = processed;
-            else allActivities.push(processed);
-          }
-        } else {
-          let processed;
-          if (raw.points && raw.points.length && (!raw.paceZoneTimes || !raw.uphill)) {
-            processed = processWorkout(raw, rFTPaSec, lthrVal, cur.id);
-          } else {
-            processed = raw;
-            if (!processed.athleteId) processed.athleteId = cur.id;
-          }
-          await dbSaveActivity(processed);
-          const idx = allActivities.findIndex(a => a.id === processed.id);
-          if (idx >= 0) allActivities[idx] = processed;
-          else allActivities.push(processed);
-        }
-      } catch (err) {
-        console.error(`Errore file ${file.name}:`, err);
-        alert(`Impossibile importare ${file.name}: ${err.message}`);
-      }
-    }
-
-    filterActivitiesForCurrentAthlete();
-  }
-
-  // ==========================================
-  // 16. GOOGLE DRIVE SYNC
-  // ==========================================
-  function initGoogleOAuth() {
-    const clientId = document.getElementById('clientIdInput').value.trim();
-    if (!clientId) {
-      alert("Inserisci il tuo Google Client ID nelle impostazioni in alto.");
-      return false;
-    }
-    localStorage.setItem('tp_google_client_id', clientId);
-
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: DRIVE_SCOPE,
-      callback: (tokenResponse) => {
-        if (tokenResponse.error) {
-          alert("Autenticazione Google fallita: " + tokenResponse.error);
-          return;
-        }
-        accessToken = tokenResponse.access_token;
-        document.getElementById('btnGoogleAuth').innerText = "✅ Connesso";
-        document.getElementById('btnPushDrive').style.display = "flex";
-        document.getElementById('btnPullDrive').style.display = "flex";
-      }
-    });
-    return true;
-  }
-
-  function handleAuthClick() {
-    if (!tokenClient) {
-      if (!initGoogleOAuth()) return;
-    }
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  }
-
-  async function findDriveFileId() {
-    const query = encodeURIComponent(`name = '${DRIVE_FILENAME}' and trashed = false`);
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    const data = await res.json();
-    return data.files && data.files.length ? data.files[0].id : null;
-  }
-
-  async function saveToGoogleDrive() {
-    if (!accessToken) return alert("Prima connetti Google Drive!");
-    const btn = document.getElementById('btnPushDrive');
-    btn.innerText = "Salvataggio...";
-
-    try {
-      const allActs = await dbGetAllActivities();
-      const payload = {
-        athletes: athletes,
-        activities: allActs,
-        scheduledWorkouts: scheduledWorkouts
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
       };
-      const content = JSON.stringify(payload);
-      const fileId = await findDriveFileId();
-
-      if (fileId) {
-        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          body: content
-        });
-      } else {
-        const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        form.append('file', new Blob([content], { type: 'application/json' }));
-
-        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}` },
-          body: form
-        });
-      }
-      btn.innerText = "✅ Salvato!";
-      setTimeout(() => { btn.innerText = "⬆️ Salva"; }, 2000);
-    } catch (err) {
-      alert("Errore salvataggio: " + err.message);
-      btn.innerText = "⬆️ Salva";
-    }
+      request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      request.onerror = (e) => reject(e);
+    });
   }
 
-  async function loadFromGoogleDrive() {
-    if (!accessToken) return alert("Prima connetti Google Drive!");
-    const btn = document.getElementById('btnPullDrive');
-    btn.innerText = "Download...";
-
-    try {
-      const fileId = await findDriveFileId();
-      if (!fileId) {
-        alert("Nessun file trovato con il nome " + DRIVE_FILENAME);
-        btn.innerText = "⬇️ Sincronizza";
-        return;
-      }
-
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const data = await res.json();
-
-      if (data.athletes && Array.isArray(data.athletes)) {
-        athletes = data.athletes;
-        saveAthletesToStorage();
-        renderAthleteSelector();
-      }
-
-      if (data.scheduledWorkouts && Array.isArray(data.scheduledWorkouts)) {
-        scheduledWorkouts = data.scheduledWorkouts;
-        saveWorkoutsToStorage();
-        renderScheduledWorkouts();
-      }
-
-      let cloudActs = data.activities || (Array.isArray(data) ? data : []);
-
-      if (Array.isArray(cloudActs)) {
-        await dbClearAll();
-        for (let act of cloudActs) {
-          if (!act.athleteId) act.athleteId = athletes[0].id;
-          await dbSaveActivity(act);
-        }
-        allActivities = cloudActs;
-        filterActivitiesForCurrentAthlete();
-
-        btn.innerText = "✅ Sincronizzato!";
-        setTimeout(() => { btn.innerText = "⬇️ Sincronizza"; }, 2000);
-      }
-    } catch (err) {
-      alert("Errore download: " + err.message);
-      btn.innerText = "⬇️ Sincronizza";
-    }
+  function dbGetAllActivities() {
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+    });
   }
-
-  // ==========================================
-  // 17. AVVIO & LISTENERS
-  // ==========================================
-  const dropzone = document.getElementById('dropzone');
-  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
-  dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--border)'; });
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropzone.style.borderColor = 'var(--border)';
-    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-  });
-  document.getElementById('fileInput').addEventListener('change', (e) => {
-    if (e.target.files.length) handleFiles(e.target.files);
-  });
-
-  document.getElementById('rfTPA').addEventListener('change', async () => {
-    const cur = getCurrentAthlete();
-    cur.rfTPA = document.getElementById('rfTPA').value;
-    saveAthletesToStorage();
-
-    const rFTPaSec = parsePaceToSec(cur.rfTPA);
-    for (let act of activities) {
-      const rFTPaSpeed = 1000 / rFTPaSec;
-      const globalNgpSpeed = 1000 / act.globalNgpSec;
-      act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
-      act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
-      await dbSaveActivity(act);
-    }
-    if (selectedActivityId) selectActivity(selectedActivityId);
-    else showGlobalDashboard();
-
-    const pmc = computePMC(activities);
-    renderPMCChart(pmc);
-    updateTrainingStatusBanner(pmc, activities);
-  });
-
-  document.getElementById('lthr').addEventListener('change', () => {
-    updateHRZonesFromCurrentSettings();
-    const cur = getCurrentAthlete();
-    activities.forEach(a => recomputeActivityHRZones(a, cur.hrConfig));
-    if (selectedActivityId) selectActivity(selectedActivityId);
-    else showGlobalDashboard();
-  });
 
   window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
     loadAthletesFromStorage();
     renderAthleteSelector();
-
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    document.getElementById('planDate').value = tomorrow.toISOString().split('T')[0];
-
-    const savedClientId = localStorage.getItem('tp_google_client_id');
-    if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
-
-    const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
-    if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
 
     const savedGhRepo = localStorage.getItem('tp_gh_repo');
     if (savedGhRepo) document.getElementById('ghRepoInput').value = savedGhRepo;
@@ -2966,39 +1114,8 @@ Fornisci un debriefing tecnico strutturato:
     const savedGhToken = localStorage.getItem('tp_gh_token');
     if (savedGhToken) document.getElementById('ghTokenInput').value = savedGhToken;
 
-    const cur = getCurrentAthlete();
-    const rFTPaSec = parsePaceToSec(cur.rfTPA);
-    const lthrVal = cur.lthr;
-
-    try {
-      const res = await fetch('activities.json?t=' + Date.now());
-      if (res.ok) {
-        const cloudFeed = await res.json();
-        const feedList = Array.isArray(cloudFeed) ? cloudFeed : (cloudFeed.activities || []);
-        
-        for (let item of feedList) {
-          if (!item.athleteId) item.athleteId = athletes[0].id;
-          if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
-            const raw = {
-              id: item.id,
-              athleteId: item.athleteId,
-              title: item.title,
-              points: item.points,
-              totalDist: item.totalDistKm * 1000,
-              totalElevationGain: item.totalElevationGain,
-              totalElevationLoss: item.totalElevationLoss || 0,
-              startTime: item.startTime
-            };
-            const processed = processWorkout(raw, rFTPaSec, lthrVal, item.athleteId);
-            await dbSaveActivity(processed);
-          } else {
-            await dbSaveActivity(item);
-          }
-        }
-      }
-    } catch (e) {
-      console.log("Feed activities.json non presente o offline.");
-    }
+    const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
+    if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
 
     allActivities = await dbGetAllActivities();
     filterActivitiesForCurrentAthlete();
