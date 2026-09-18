@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro Suite - Multi-Athlete & Workout Planner</title>
+  <title>Running & Trail Analytics Pro Suite - Multi-Athlete & Auto-Sync Garmin</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -365,7 +365,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Multi-Atleta & Garmin Sync</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Multi-Atleta & Garmin Sync Automatico</p>
     </div>
 
     <div class="top-controls">
@@ -404,23 +404,31 @@
     </div>
   </div>
 
-  <!-- Barra Impostazioni -->
+  <!-- Barra Impostazioni & Automatismi GitHub -->
   <div class="settings-bar">
     <div>
+      <label for="ghRepoInput">GitHub Repo (username/repo):</label>
+      <input type="text" id="ghRepoInput" style="width: 155px; text-align: left;" placeholder="es. mario/trail-suite" onchange="saveGitHubCredentials()">
+    </div>
+    <div>
+      <label for="ghTokenInput">GitHub Token (PAT):</label>
+      <input type="password" id="ghTokenInput" style="width: 140px; text-align: left;" placeholder="ghp_..." onchange="saveGitHubCredentials()">
+    </div>
+    <div>
       <label for="geminiApiKey">Gemini API Key:</label>
-      <input type="password" id="geminiApiKey" style="width: 170px; text-align: left;" placeholder="Chiave Google AI Studio" onchange="saveGeminiApiKey()">
+      <input type="password" id="geminiApiKey" style="width: 140px; text-align: left;" placeholder="Chiave AI Studio" onchange="saveGeminiApiKey()">
     </div>
     <div>
       <label for="clientIdInput">Drive Client ID:</label>
-      <input type="text" id="clientIdInput" style="width: 170px; text-align: left;" placeholder="Client ID OAuth2">
+      <input type="text" id="clientIdInput" style="width: 140px; text-align: left;" placeholder="Client ID OAuth2">
     </div>
     <div>
       <label for="rfTPA">rFTPa (<span id="lblCurAthleteNamePace">Atleta</span>):</label>
-      <input type="text" id="rfTPA" value="04:15" style="width: 60px;" placeholder="04:15">
+      <input type="text" id="rfTPA" value="04:15" style="width: 55px;" placeholder="04:15">
     </div>
     <div>
-      <label for="lthr">LTHR (FC bpm):</label>
-      <input type="number" id="lthr" value="168" style="width: 55px;" placeholder="168">
+      <label for="lthr">LTHR (bpm):</label>
+      <input type="number" id="lthr" value="168" style="width: 50px;" placeholder="168">
     </div>
     <button class="btn-sync" style="padding: 5px 10px; font-size: 0.78rem;" onclick="openHRModal()">
       ⚙️ Zone Cardio
@@ -499,16 +507,16 @@
     <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
   </div>
 
-  <!-- PIANIFICATORE ALLENAMENTI & CALENDARIO GARMIN -->
+  <!-- PIANIFICATORE ALLENAMENTI & AUTO-SYNC GARMIN -->
   <div class="planner-card">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
       <div>
         <h2 style="font-size: 1.05rem; font-weight: 700;">📅 Pianifica Allenamento & Sincronizza su Garmin</h2>
-        <p style="color: var(--muted); font-size: 0.78rem;">Imposta gli allenamenti futuri: verranno sincronizzati direttamente sul calendario del tuo orologio</p>
+        <p style="color: var(--muted); font-size: 0.78rem;">Pianifica gli allenamenti e inviali all'orologio in modo del tutto automatico</p>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button class="btn-sync ai" onclick="askAIGenerateWorkout()">🤖 Proponi Allenamento con IA</button>
-        <button class="btn-sync success" onclick="downloadWorkoutsForGarmin()">💾 Salva scheduled_workouts.json</button>
+        <button class="btn-sync ai" onclick="askAIGenerateWorkout()">🤖 Proponi con IA</button>
+        <button class="btn-sync success" id="btnAutoSyncGarmin" onclick="pushWorkoutsToGitHubAndRunAction()">🚀 Invia e Sincronizza su Garmin</button>
       </div>
     </div>
 
@@ -565,7 +573,6 @@
 
   <!-- Split View Principale -->
   <div class="main-grid">
-    <!-- Logbook lista a sinistra -->
     <div class="activity-list-card">
       <div class="activity-list-header">
         <span>Corse di <span id="listAthleteTitle">Atleta</span> (<span id="actCount">0</span>)</span>
@@ -576,7 +583,6 @@
       </div>
     </div>
 
-    <!-- Contenuto dinamico a destra -->
     <div style="display: flex; flex-direction: column; gap: 14px;">
       
       <div class="view-title-bar">
@@ -842,6 +848,13 @@
     localStorage.setItem('tp_scheduled_workouts', JSON.stringify(scheduledWorkouts));
   }
 
+  function saveGitHubCredentials() {
+    const repo = document.getElementById('ghRepoInput').value.trim();
+    const token = document.getElementById('ghTokenInput').value.trim();
+    localStorage.setItem('tp_gh_repo', repo);
+    localStorage.setItem('tp_gh_token', token);
+  }
+
   function renderAthleteSelector() {
     const sel = document.getElementById('athleteSelect');
     sel.innerHTML = athletes.map(a => `
@@ -969,7 +982,7 @@
   }
 
   // ==========================================
-  // 2. PIANIFICATORE ALLENAMENTI & IA WORKOUT
+  // 2. PIANIFICATORE ALLENAMENTI & AUTO-SYNC GITHUB/GARMIN
   // ==========================================
   function renderScheduledWorkouts() {
     const cur = getCurrentAthlete();
@@ -1022,7 +1035,6 @@
     scheduledWorkouts.push(newWorkout);
     saveWorkoutsToStorage();
     renderScheduledWorkouts();
-    alert(`Allenamento salvato per il ${date}! Clicca su "Salva scheduled_workouts.json" per sincronizzarlo con Garmin.`);
   }
 
   function deleteScheduledWorkout(id) {
@@ -1031,15 +1043,101 @@
     renderScheduledWorkouts();
   }
 
-  function downloadWorkoutsForGarmin() {
-    if (!scheduledWorkouts.length) return alert("Nessun allenamento da esportare.");
-    const blob = new Blob([JSON.stringify(scheduledWorkouts, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "scheduled_workouts.json";
-    a.click();
-    URL.revokeObjectURL(url);
+  // COMMIT AUTOMATICO DEL FILE JSON SU GITHUB + TRIGGER DELLA GITHUB ACTION
+  async function pushWorkoutsToGitHubAndRunAction() {
+    const repo = document.getElementById('ghRepoInput').value.trim();
+    const token = document.getElementById('ghTokenInput').value.trim();
+
+    if (!repo || !token) {
+      alert("Inserisci il tuo repository GitHub (es. username/repo) e il Personal Access Token nelle impostazioni in alto per sincronizzare in automatico.");
+      return;
+    }
+
+    const btn = document.getElementById('btnAutoSyncGarmin');
+    btn.innerText = "⏳ Invio in corso...";
+    btn.disabled = true;
+
+    try {
+      const path = "scheduled_workouts.json";
+      const apiUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
+      const contentStr = JSON.stringify(scheduledWorkouts, null, 2);
+      const contentBase64 = btoa(unescape(encodeURIComponent(contentStr)));
+
+      // 1. Verifica se il file esiste già per recuperare lo SHA corrente
+      let sha = null;
+      try {
+        const getRes = await fetch(apiUrl, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github.v3+json"
+          }
+        });
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
+        }
+      } catch (e) {}
+
+      // 2. Commit del file scheduled_workouts.json
+      const putBody = {
+        message: "Aggiornamento allenamenti programmati da Dashboard [skip ci]",
+        content: contentBase64,
+        sha: sha || undefined
+      };
+
+      const putRes = await fetch(apiUrl, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify(putBody)
+      });
+
+      if (!putRes.ok) {
+        const err = await putRes.json();
+        throw new Error("Errore commit GitHub: " + (err.message || putRes.statusText));
+      }
+
+      // 3. Trigger immediato del workflow GitHub Action (sync_garmin)
+      btn.innerText = "⚡ Avvio sincronizzazione...";
+      const workflowsUrl = `https://api.github.com/repos/${repo}/actions/workflows`;
+      const wfListRes = await fetch(workflowsUrl, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github.v3+json"
+        }
+      });
+
+      if (wfListRes.ok) {
+        const wfData = await wfListRes.json();
+        const mainWf = (wfData.workflows || [])[0];
+        if (mainWf) {
+          await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${mainWf.id}/dispatches`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+              "Accept": "application/vnd.github.v3+json"
+            },
+            body: JSON.stringify({ ref: "main" })
+          });
+        }
+      }
+
+      btn.innerText = "✅ Sincronizzato con Garmin!";
+      alert("Allenamenti caricati su GitHub e invio a Garmin Connect avviato con successo! Tra 1-2 minuti li troverai nel calendario dell'orologio.");
+      setTimeout(() => {
+        btn.innerText = "🚀 Invia e Sincronizza su Garmin";
+        btn.disabled = false;
+      }, 3500);
+
+    } catch (err) {
+      alert("Errore sincronizzazione automatica: " + err.message);
+      btn.innerText = "🚀 Invia e Sincronizza su Garmin";
+      btn.disabled = false;
+    }
   }
 
   async function askAIGenerateWorkout() {
@@ -2852,7 +2950,6 @@ Fornisci un debriefing tecnico strutturato:
     loadAthletesFromStorage();
     renderAthleteSelector();
 
-    // Imposta domani come data default nel planner
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     document.getElementById('planDate').value = tomorrow.toISOString().split('T')[0];
@@ -2862,6 +2959,12 @@ Fornisci un debriefing tecnico strutturato:
 
     const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
     if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
+
+    const savedGhRepo = localStorage.getItem('tp_gh_repo');
+    if (savedGhRepo) document.getElementById('ghRepoInput').value = savedGhRepo;
+
+    const savedGhToken = localStorage.getItem('tp_gh_token');
+    if (savedGhToken) document.getElementById('ghTokenInput').value = savedGhToken;
 
     const cur = getCurrentAthlete();
     const rFTPaSec = parsePaceToSec(cur.rfTPA);
