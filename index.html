@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro Suite - Multi-Athlete</title>
+  <title>Running & Trail Analytics Pro Suite - Multi-Athlete & Workout Planner</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -74,7 +74,6 @@
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
     .settings-bar input, .settings-bar select { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
 
-    /* SEZIONE MULTI-ATLETA */
     .athlete-selector-box {
       display: flex;
       align-items: center;
@@ -305,6 +304,59 @@
       min-height: 55px;
     }
     .rpe-select { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+
+    /* SEZIONE CALENDARIO & WORKOUT PLANNER */
+    .planner-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .planner-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .planner-form-grid label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .planner-form-grid input, .planner-form-grid select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+    .scheduled-workouts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .scheduled-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(11, 15, 25, 0.6);
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+    .scheduled-row-date {
+      color: var(--accent-ctl);
+      font-weight: 700;
+      width: 100px;
+    }
   </style>
 </head>
 <body>
@@ -313,11 +365,10 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Multi-Atleta</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Multi-Atleta & Garmin Sync</p>
     </div>
 
     <div class="top-controls">
-      <!-- Selettore Atleta -->
       <div class="athlete-selector-box">
         <label for="athleteSelect" style="font-size: 0.76rem; color: var(--muted); font-weight: 600;">👤 Atleta:</label>
         <select id="athleteSelect" onchange="switchAthlete(this.value)"></select>
@@ -353,7 +404,7 @@
     </div>
   </div>
 
-  <!-- Barra Impostazioni Specifiche per Atleta -->
+  <!-- Barra Impostazioni -->
   <div class="settings-bar">
     <div>
       <label for="geminiApiKey">Gemini API Key:</label>
@@ -448,6 +499,55 @@
     <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
   </div>
 
+  <!-- PIANIFICATORE ALLENAMENTI & CALENDARIO GARMIN -->
+  <div class="planner-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <h2 style="font-size: 1.05rem; font-weight: 700;">📅 Pianifica Allenamento & Sincronizza su Garmin</h2>
+        <p style="color: var(--muted); font-size: 0.78rem;">Imposta gli allenamenti futuri: verranno sincronizzati direttamente sul calendario del tuo orologio</p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-sync ai" onclick="askAIGenerateWorkout()">🤖 Proponi Allenamento con IA</button>
+        <button class="btn-sync success" onclick="downloadWorkoutsForGarmin()">💾 Salva scheduled_workouts.json</button>
+      </div>
+    </div>
+
+    <div class="planner-form-grid">
+      <div>
+        <label for="planDate">Data Allenamento:</label>
+        <input type="date" id="planDate">
+      </div>
+      <div>
+        <label for="planName">Nome Allenamento:</label>
+        <input type="text" id="planName" placeholder="Es. Ripetute 5x1000m Z4">
+      </div>
+      <div>
+        <label for="planType">Tipologia Sessione:</label>
+        <select id="planType">
+          <option value="easy">Fondo Lento Z2 (Rigenerante)</option>
+          <option value="intervals">Ripetute / Intervalli Z4</option>
+          <option value="tempo">Medio / Tempo Run Z3</option>
+          <option value="long">Lungo Collinare / Trail</option>
+          <option value="hills">Salite Brevi / Forza Specifica</option>
+        </select>
+      </div>
+      <div>
+        <label for="planDuration">Durata (Minuti):</label>
+        <input type="number" id="planDuration" value="50" min="15" max="240">
+      </div>
+      <div>
+        <button class="btn-sync primary" style="width: 100%; justify-content: center;" onclick="addPlannedWorkout()">➕ Aggiungi al Calendario</button>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="font-size: 0.84rem; color: var(--muted); text-transform: uppercase; margin-bottom: 6px;">Allenamenti Programmati in Calendario (<span id="scheduledCount">0</span>)</h3>
+      <div class="scheduled-workouts-list" id="scheduledWorkoutsList">
+        <p style="color: var(--muted); font-size: 0.8rem;">Nessun allenamento programmato. Aggiungine uno sopra o chiedi all'IA.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload GPX / FIT / JSON Manuale -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
     <h3>Carica sessioni per <span id="dropzoneAthleteName" style="color: var(--accent-ctl);">questo atleta</span> (.FIT, .GPX o .JSON)</h3>
@@ -479,7 +579,6 @@
     <!-- Contenuto dinamico a destra -->
     <div style="display: flex; flex-direction: column; gap: 14px;">
       
-      <!-- Titolo Contesto / Switcher -->
       <div class="view-title-bar">
         <div>
           <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em;" id="viewContextLabel">PANORAMICA GENERALE</span>
@@ -695,6 +794,7 @@
   let allActivities = [];
   let activities = [];
   let selectedActivityId = null;
+  let scheduledWorkouts = [];
 
   let workoutChartInstance = null;
   let pmcChartInstance = null;
@@ -726,11 +826,20 @@
     } else {
       currentAthleteId = athletes[0].id;
     }
+
+    const savedWorkouts = localStorage.getItem('tp_scheduled_workouts');
+    if (savedWorkouts) {
+      try { scheduledWorkouts = JSON.parse(savedWorkouts); } catch(e){}
+    }
   }
 
   function saveAthletesToStorage() {
     localStorage.setItem('tp_athletes_data', JSON.stringify(athletes));
     localStorage.setItem('tp_current_athlete_id', currentAthleteId);
+  }
+
+  function saveWorkoutsToStorage() {
+    localStorage.setItem('tp_scheduled_workouts', JSON.stringify(scheduledWorkouts));
   }
 
   function renderAthleteSelector() {
@@ -749,6 +858,7 @@
     document.getElementById('viewContextTitle').innerText = `Riepilogo Carriera di ${cur.name}`;
 
     updateHRZonesFromCurrentSettings();
+    renderScheduledWorkouts();
   }
 
   function createNewAthlete() {
@@ -805,16 +915,15 @@
 
   function switchAthlete(newId) {
     currentAthleteId = newId;
-    selectedActivityId = null; // Reset immediato della sessione attiva
+    selectedActivityId = null;
     saveAthletesToStorage();
     renderAthleteSelector();
     filterActivitiesForCurrentAthlete();
   }
 
   function filterActivitiesForCurrentAthlete() {
-    selectedActivityId = null; // Previene la visualizzazione di vecchie corse
+    selectedActivityId = null;
 
-    // Se un'attività non ha athleteId, la assegna al primo atleta disponibile
     allActivities.forEach(a => {
       if (!a.athleteId) a.athleteId = athletes[0].id;
     });
@@ -826,6 +935,7 @@
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
     checkThresholdUpdates();
+    renderScheduledWorkouts();
   }
 
   async function promptReassignAthlete(e, actId) {
@@ -834,7 +944,7 @@
     if (!act) return;
 
     const options = athletes.map((a, i) => `${i + 1}. ${a.name}`).join('\n');
-    const choice = prompt(`A quale atleta vuoi assegnare "${act.title}"?\n\n${options}\n\nInserisci il numero corrispondente:`);
+    const choice = prompt(`A quale atleta vuoi assegnare "${act.title}"?\n\n${options}\n\nInserisci il numero:`);
     if (!choice) return;
 
     const idx = parseInt(choice, 10) - 1;
@@ -846,7 +956,6 @@
     const targetAth = athletes[idx];
     act.athleteId = targetAth.id;
 
-    // Ricalcola con i parametri del nuovo atleta
     const rFTPaSec = parsePaceToSec(targetAth.rfTPA);
     const lthrVal = targetAth.lthr;
     const rFTPaSpeed = 1000 / rFTPaSec;
@@ -860,7 +969,119 @@
   }
 
   // ==========================================
-  // 2. MODULO IA (GOOGLE GEMINI MULTI-MODELLO)
+  // 2. PIANIFICATORE ALLENAMENTI & IA WORKOUT
+  // ==========================================
+  function renderScheduledWorkouts() {
+    const cur = getCurrentAthlete();
+    const listEl = document.getElementById('scheduledWorkoutsList');
+    const filtered = scheduledWorkouts.filter(w => !w.athleteId || w.athleteId === cur.id);
+    document.getElementById('scheduledCount').innerText = filtered.length;
+
+    if (!filtered.length) {
+      listEl.innerHTML = `<p style="color: var(--muted); font-size: 0.8rem;">Nessun allenamento programmato per ${cur.name}.</p>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((w, idx) => `
+        <div class="scheduled-row">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="scheduled-row-date">📅 ${w.date}</span>
+            <div>
+              <strong style="color: var(--text);">${w.name}</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">${w.durationMinutes} min | ${w.description || ''}</div>
+            </div>
+          </div>
+          <button class="btn-sync danger" style="padding: 2px 6px; font-size: 0.72rem;" onclick="deleteScheduledWorkout('${w.id}')">&times; Rimuovi</button>
+        </div>
+      `).join('');
+  }
+
+  function addPlannedWorkout() {
+    const cur = getCurrentAthlete();
+    const date = document.getElementById('planDate').value;
+    const name = document.getElementById('planName').value.trim();
+    const duration = parseInt(document.getElementById('planDuration').value, 10) || 45;
+    const type = document.getElementById('planType').value;
+
+    if (!date) return alert("Seleziona una data per l'allenamento.");
+    if (!name) return alert("Inserisci un nome o descrizione per la sessione.");
+
+    const newWorkout = {
+      id: "plan_" + Date.now(),
+      athleteId: cur.id,
+      athleteName: cur.name,
+      date: date,
+      name: name,
+      type: type,
+      durationMinutes: duration,
+      description: `Target ${cur.name}: Passo Soglia ${cur.rfTPA}, FC Soglia ${cur.lthr} bpm`
+    };
+
+    scheduledWorkouts.push(newWorkout);
+    saveWorkoutsToStorage();
+    renderScheduledWorkouts();
+    alert(`Allenamento salvato per il ${date}! Clicca su "Salva scheduled_workouts.json" per sincronizzarlo con Garmin.`);
+  }
+
+  function deleteScheduledWorkout(id) {
+    scheduledWorkouts = scheduledWorkouts.filter(w => w.id !== id);
+    saveWorkoutsToStorage();
+    renderScheduledWorkouts();
+  }
+
+  function downloadWorkoutsForGarmin() {
+    if (!scheduledWorkouts.length) return alert("Nessun allenamento da esportare.");
+    const blob = new Blob([JSON.stringify(scheduledWorkouts, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "scheduled_workouts.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function askAIGenerateWorkout() {
+    const cur = getCurrentAthlete();
+    const pmc = computePMC(activities);
+    const today = pmc.length ? pmc[pmc.length - 1] : { ctl: 0, atl: 0, tsb: 0 };
+    
+    const prompt = `Sei un coach di running e trail running professionista.
+Proponi un singolo allenamento strutturato ideale per i prossimi 1-2 giorni per l'atleta ${cur.name}.
+Dati atleta:
+- Stato di forma attuale: CTL ${today.ctl}, ATL ${today.atl}, TSB (Freschezza) ${today.tsb}
+- Passo Soglia (rFTPa): ${cur.rfTPA}/km
+- Frequenza cardiaca di soglia (LTHR): ${cur.lthr} bpm
+
+Rispondi ESCLUSIVAMENTE con un oggetto JSON valido (senza testo extra prima o dopo) con questa struttura esatta:
+{
+  "name": "Nome dell'allenamento",
+  "type": "intervals o easy o tempo o hills",
+  "durationMinutes": 50,
+  "description": "Descrizione sintetica con riscaldamento, target di passo/cardio e defaticamento"
+}`;
+
+    try {
+      alert("L'IA sta elaborando la proposta di allenamento adatta alla tua forma...");
+      const reply = await callGemini(prompt);
+      const cleanJson = reply.replace(/```json/g, '').replace(/```/g, '').trim();
+      const plan = JSON.parse(cleanJson);
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('planDate').value = tomorrow.toISOString().split('T')[0];
+      document.getElementById('planName').value = plan.name;
+      document.getElementById('planDuration').value = plan.durationMinutes || 50;
+      if (plan.type) document.getElementById('planType').value = plan.type;
+      alert(`L'IA propone: "${plan.name}" (${plan.durationMinutes} min).\n\n${plan.description}\n\nI dati sono stati precompilati nel form, clicca 'Aggiungi al Calendario' per confermare.`);
+    } catch (err) {
+      alert("Impossibile generare l'allenamento con l'IA: " + err.message);
+    }
+  }
+
+  // ==========================================
+  // 3. MODULO IA (GOOGLE GEMINI MULTI-MODELLO)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -892,7 +1113,7 @@
         candidateModels = [...new Set([...candidateModels, ...available])];
       }
     } catch (e) {
-      console.warn("Impossibile contattare ListModels, procedo con candidati predefiniti", e);
+      console.warn("Impossibile contattare ListModels", e);
     }
 
     const payload = {
@@ -941,7 +1162,7 @@
       }
     }
 
-    throw new Error(lastErrorMsg || "Nessun modello Gemini è attualmente accessibile. Riprova tra pochi istanti.");
+    throw new Error(lastErrorMsg || "Nessun modello Gemini accessibile. Riprova tra pochi istanti.");
   }
 
   async function askAITrainingStatus() {
@@ -1007,7 +1228,7 @@ Forniscimi un'analisi tecnica completa e personalizzata per ${cur.name}:
     const prompt = `Agisci come un coach professionista di corsa e trail running.
 Analizza questa sessione di allenamento dell'atleta ${cur.name}:
 - Sessione: ${act.title} (${act.dateStr})
-- Parametri di riferimento atleta: Passo Soglia ${cur.rfTPA}/km, FC Soglia ${cur.lthr} bpm
+- Parametri di riferimento: Passo Soglia ${cur.rfTPA}/km, FC Soglia ${cur.lthr} bpm
 - Distanza: ${act.totalDistKm.toFixed(2)} km | D+: ${act.totalElevationGain}m | D-: ${act.totalElevationLoss}m
 - Tempo Totale: ${formatDuration(act.totalTimeSec)}
 - Passo Medio: ${formatSecToPace(act.avgPaceSec)} | Passo Normalizzato (NGP): ${formatSecToPace(act.globalNgpSec)}
@@ -1034,7 +1255,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 3. GESTIONE ZONE CARDIO SPECIFICHE PER ATLETA
+  // 4. ZONE CARDIO
   // ==========================================
   function getAutoFrielZones(lthrVal) {
     return [
@@ -1163,7 +1384,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 4. INDEXEDDB
+  // 5. INDEXEDDB
   // ==========================================
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -1216,7 +1437,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 5. UTILS
+  // 6. UTILS
   // ==========================================
   function parsePaceToSec(str) {
     const parts = (str || "04:15").split(':');
@@ -1252,7 +1473,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 6. PARSER .FIT NATIVO, .GPX E .JSON
+  // 7. PARSER FILE
   // ==========================================
   async function parseFile(file) {
     const nameLower = file.name.toLowerCase();
@@ -1273,7 +1494,7 @@ Fornisci un debriefing tecnico strutturato:
     try {
       data = JSON.parse(jsonText);
     } catch (e) {
-      throw new Error("File JSON non valido o corrotto.");
+      throw new Error("File JSON non valido.");
     }
 
     if (data && data.athletes && Array.isArray(data.athletes)) {
@@ -1303,7 +1524,7 @@ Fornisci un debriefing tecnico strutturato:
       }
     }
     if (!window.GarminFitSDK) {
-      throw new Error("Libreria Garmin FIT SDK non caricata. Verifica la connessione.");
+      throw new Error("Libreria Garmin FIT SDK non caricata.");
     }
 
     const { Decoder, Stream } = window.GarminFitSDK;
@@ -1312,13 +1533,11 @@ Fornisci un debriefing tecnico strutturato:
     const { messages, errors } = decoder.read();
 
     if (errors && errors.length > 0 && (!messages || !messages.recordMesgs)) {
-      throw new Error("File FIT non leggibile: " + (errors[0]?.message || errors[0]));
+      throw new Error("File FIT non leggibile.");
     }
 
     const records = messages.recordMesgs || messages.records || [];
-    if (!records.length) {
-      throw new Error("Nessun punto traccia (record) trovato nel file FIT.");
-    }
+    if (!records.length) throw new Error("Nessun punto traccia nel file FIT.");
 
     let points = [];
     let totalDist = 0, totalElevationGain = 0, totalElevationLoss = 0;
@@ -1348,10 +1567,6 @@ Fornisci un debriefing tecnico strutturato:
         else if (dEle < -0.5) totalElevationLoss += Math.abs(dEle);
       }
       points.push({ lat, lon, ele, time: timestamp, dist: totalDist, hr, cadence, power });
-    }
-
-    if (!points.length) {
-      throw new Error("Nessuna coordinata GPS valida presente nel file FIT.");
     }
 
     return {
@@ -1402,7 +1617,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 7. MOTORE MATEMATICO
+  // 8. MOTORE MATEMATICO
   // ==========================================
   function processWorkout(raw, rFTPaSec, lthrVal, athleteId) {
     const cur = getCurrentAthlete();
@@ -1605,7 +1820,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 8. STIMA SOGLIA
+  // 9. STIMA SOGLIA
   // ==========================================
   function detectThresholds(acts) {
     if (!acts || !acts.length) return null;
@@ -1688,7 +1903,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 9. PMC & STATUS
+  // 10. PMC & STATISTICHE
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1826,7 +2041,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 10. VISTA GLOBALE (PANORAMICA TUTTI GLI ALLENAMENTI)
+  // 11. VISTA GLOBALE
   // ==========================================
   function showGlobalDashboard() {
     selectedActivityId = null;
@@ -1861,7 +2076,6 @@ Fornisci un debriefing tecnico strutturato:
       document.getElementById('valNP').innerText = "NP: --";
       document.getElementById('valDecoupling').innerText = "--";
 
-      // Pulisce grafici e tabelle
       document.getElementById('terrainBreakdownBody').innerHTML = `<tr><td colspan="6" style="color: var(--muted); text-align: center;">Nessun dato per questo atleta</td></tr>`;
       document.getElementById('meanMaxTableBody').innerHTML = `<tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>`;
       document.getElementById('paceZonesContainer').innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Nessun dato</p>`;
@@ -1983,7 +2197,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 11. VISTA SINGOLA SESSIONE
+  // 12. VISTA SINGOLA SESSIONE
   // ==========================================
   function selectActivity(id) {
     selectedActivityId = id;
@@ -2055,7 +2269,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 12. TABELLE & ZONE
+  // 13. TABELLE & ZONE
   // ==========================================
   function renderCustomTerrainTable(u, d, f, title) {
     document.getElementById('terrainTitle').innerText = title;
@@ -2194,7 +2408,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 13. GRAFICI
+  // 14. GRAFICI TELEMETRIA
   // ==========================================
   function renderWorkoutChart(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
@@ -2321,7 +2535,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 14. MAPPA & NOTE
+  // 15. MAPPA & NOTE
   // ==========================================
   function initOrUpdateMap(act) {
     if (!act || !act.points || !act.points.length) return;
@@ -2455,7 +2669,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 15. GOOGLE DRIVE SYNC (COLLEZIONE MULTI-ATLETA)
+  // 16. GOOGLE DRIVE SYNC
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim();
@@ -2507,7 +2721,8 @@ Fornisci un debriefing tecnico strutturato:
       const allActs = await dbGetAllActivities();
       const payload = {
         athletes: athletes,
-        activities: allActs
+        activities: allActs,
+        scheduledWorkouts: scheduledWorkouts
       };
       const content = JSON.stringify(payload);
       const fileId = await findDriveFileId();
@@ -2562,6 +2777,12 @@ Fornisci un debriefing tecnico strutturato:
         renderAthleteSelector();
       }
 
+      if (data.scheduledWorkouts && Array.isArray(data.scheduledWorkouts)) {
+        scheduledWorkouts = data.scheduledWorkouts;
+        saveWorkoutsToStorage();
+        renderScheduledWorkouts();
+      }
+
       let cloudActs = data.activities || (Array.isArray(data) ? data : []);
 
       if (Array.isArray(cloudActs)) {
@@ -2583,7 +2804,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 16. AVVIO & LISTENERS
+  // 17. AVVIO & LISTENERS
   // ==========================================
   const dropzone = document.getElementById('dropzone');
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-primary)'; });
@@ -2631,6 +2852,11 @@ Fornisci un debriefing tecnico strutturato:
     loadAthletesFromStorage();
     renderAthleteSelector();
 
+    // Imposta domani come data default nel planner
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('planDate').value = tomorrow.toISOString().split('T')[0];
+
     const savedClientId = localStorage.getItem('tp_google_client_id');
     if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
 
@@ -2668,7 +2894,7 @@ Fornisci un debriefing tecnico strutturato:
         }
       }
     } catch (e) {
-      console.log("Nessun feed activities.json trovato o caricamento offline, uso database locale.");
+      console.log("Feed activities.json non presente o offline.");
     }
 
     allActivities = await dbGetAllActivities();
