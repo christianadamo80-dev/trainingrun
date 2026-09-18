@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro Suite</title>
+  <title>Running & Trail Analytics Pro Suite - Multi-Athlete</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -65,12 +65,35 @@
     .btn-sync.primary:hover { background: #0369a1; }
     .btn-sync.success { background: #10b981; border-color: #10b981; color: #fff; }
     .btn-sync.success:hover { background: #059669; }
+    .btn-sync.danger { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: #fca5a5; }
+    .btn-sync.danger:hover { background: var(--danger); color: #fff; }
     .btn-sync.ai { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: #fff; }
     .btn-sync.ai:hover { opacity: 0.9; }
 
     .settings-bar { display: flex; gap: 12px; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
     .settings-bar label { font-size: 0.76rem; color: var(--muted); }
-    .settings-bar input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
+    .settings-bar input, .settings-bar select { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 0.82rem; }
+
+    /* SEZIONE MULTI-ATLETA */
+    .athlete-selector-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .athlete-selector-box select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--accent-ctl);
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
 
     /* BOX FEEDBACK IA */
     .ai-feedback-box {
@@ -288,18 +311,27 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Virtuale (Gemini)</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Analisi TrainingPeaks + Coach IA Multi-Atleta</p>
     </div>
 
     <div class="top-controls">
+      <!-- Selettore Atleta -->
+      <div class="athlete-selector-box">
+        <label for="athleteSelect" style="font-size: 0.76rem; color: var(--muted); font-weight: 600;">👤 Atleta:</label>
+        <select id="athleteSelect" onchange="switchAthlete(this.value)"></select>
+        <button class="btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="createNewAthlete()" title="Aggiungi Nuovo Profilo Atleta">➕ Nuovo</button>
+        <button class="btn-sync" style="padding: 4px 8px; font-size: 0.75rem;" onclick="renameCurrentAthlete()" title="Rinomina Atleta">✏️</button>
+        <button class="btn-sync danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteCurrentAthlete()" title="Elimina Atleta e Attività">🗑️</button>
+      </div>
+
       <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()">
-        <span>☁️ Connetti Google Drive</span>
+        <span>☁️ Drive</span>
       </button>
       <button class="btn-sync" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()">
-        <span>⬆️ Salva su Drive</span>
+        <span>⬆️ Salva</span>
       </button>
       <button class="btn-sync" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()">
-        <span>⬇️ Sincronizza da Drive</span>
+        <span>⬇️ Sincronizza</span>
       </button>
     </div>
   </header>
@@ -319,18 +351,18 @@
     </div>
   </div>
 
-  <!-- Barra Impostazioni -->
+  <!-- Barra Impostazioni Specifiche per Atleta -->
   <div class="settings-bar">
     <div>
       <label for="geminiApiKey">Gemini API Key:</label>
-      <input type="password" id="geminiApiKey" style="width: 170px; text-align: left;" placeholder="Incolla chiave AI Studio" onchange="saveGeminiApiKey()">
+      <input type="password" id="geminiApiKey" style="width: 170px; text-align: left;" placeholder="Chiave Google AI Studio" onchange="saveGeminiApiKey()">
     </div>
     <div>
-      <label for="clientIdInput">Google Drive Client ID:</label>
-      <input type="text" id="clientIdInput" style="width: 200px; text-align: left;" placeholder="Client ID OAuth2">
+      <label for="clientIdInput">Drive Client ID:</label>
+      <input type="text" id="clientIdInput" style="width: 170px; text-align: left;" placeholder="Client ID OAuth2">
     </div>
     <div>
-      <label for="rfTPA">rFTPa (Passo Soglia):</label>
+      <label for="rfTPA">rFTPa (<span id="lblCurAthleteNamePace">Atleta</span>):</label>
       <input type="text" id="rfTPA" value="04:15" style="width: 60px;" placeholder="04:15">
     </div>
     <div>
@@ -346,7 +378,7 @@
   <div id="hrModal">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-        <h3 style="font-size: 1.05rem;">Configurazione Zone Cardio (BPM)</h3>
+        <h3 style="font-size: 1.05rem;" id="hrModalTitle">Configurazione Zone Cardio (BPM)</h3>
         <button onclick="closeHRModal()" style="background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer;">&times;</button>
       </div>
 
@@ -371,7 +403,7 @@
         <div class="status-badge" id="statusBadge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">Dati insufficienti</div>
         <button class="btn-sync ai" style="padding: 4px 8px; font-size: 0.72rem;" onclick="askAITrainingStatus()">🤖 Analizza Forma con IA</button>
       </div>
-      <div class="status-desc" id="statusDesc">Carica le tue sessioni per calcolare lo stato di forma e il carico.</div>
+      <div class="status-desc" id="statusDesc">Carica le sessioni di questo atleta per calcolare lo stato di forma e il carico.</div>
     </div>
 
     <div class="status-metrics">
@@ -408,7 +440,7 @@
   <!-- Box Risposta IA per Training Status -->
   <div class="ai-feedback-box" id="aiStatusBox">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h3>🤖 Valutazione Coach IA (Stato di Forma & Carico)</h3>
+      <h3 id="aiStatusTitle">🤖 Valutazione Coach IA (Stato di Forma & Carico)</h3>
       <button onclick="document.getElementById('aiStatusBox').style.display='none'" style="background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1.1rem;">&times;</button>
     </div>
     <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
@@ -416,14 +448,14 @@
 
   <!-- Upload GPX / FIT / JSON Manuale -->
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-    <h3>Carica sessioni (.FIT, .GPX o .JSON)</h3>
-    <p>Trascina qui i tuoi file dall'orologio o i backup JSON del logbook</p>
+    <h3>Carica sessioni per <span id="dropzoneAthleteName" style="color: var(--accent-ctl);">questo atleta</span> (.FIT, .GPX o .JSON)</h3>
+    <p>Trascina qui i tuoi file o caricali dall'orologio</p>
     <input type="file" id="fileInput" accept=".fit,.gpx,.json" multiple>
   </div>
 
   <!-- PMC Chart -->
   <div class="chart-box">
-    <h2>Performance Management Chart (CTL / ATL / TSB)</h2>
+    <h2>Performance Management Chart (CTL / ATL / TSB) - <span id="pmcAthleteTitle">Atleta</span></h2>
     <div class="chart-canvas">
       <canvas id="pmcChart"></canvas>
     </div>
@@ -434,7 +466,7 @@
     <!-- Logbook lista a sinistra -->
     <div class="activity-list-card">
       <div class="activity-list-header">
-        <span>Archivio Corse (<span id="actCount">0</span>)</span>
+        <span>Corse di <span id="listAthleteTitle">Atleta</span> (<span id="actCount">0</span>)</span>
         <button class="btn-sync" style="padding: 3px 8px; font-size: 0.72rem;" onclick="showGlobalDashboard()">📊 Panoramica</button>
       </div>
       <div class="activity-items" id="activityList">
@@ -449,7 +481,7 @@
       <div class="view-title-bar">
         <div>
           <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em;" id="viewContextLabel">PANORAMICA GENERALE</span>
-          <h2 id="viewContextTitle">Riepilogo Totale di Carriera</h2>
+          <h2 id="viewContextTitle">Riepilogo Carriera Atleta</h2>
         </div>
         <div style="display: flex; gap: 8px;">
           <button id="btnAskAIActivity" class="btn-sync ai" style="display: none;" onclick="askAIActivity()">
@@ -530,7 +562,7 @@
 
       <!-- Dettaglio Terreno -->
       <div class="card" style="padding: 12px 14px;">
-        <div class="card-title" id="terrainTitle">Ripartizione Terreno Globale (Tutte le corse)</div>
+        <div class="card-title" id="terrainTitle">Ripartizione Terreno Globale</div>
         <table class="terrain-table">
           <thead>
             <tr>
@@ -626,7 +658,7 @@
 
 <script>
   // ==========================================
-  // 1. STATO & COSTANTI
+  // 1. STATO & COSTANTI MULTI-ATLETA
   // ==========================================
   const DRIVE_FILENAME = "running_logbook_pro.json";
   const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -638,8 +670,31 @@
   const STORE_NAME = "activities";
   let db = null;
 
-  let activities = [];
+  // Gestione Profili Atleti
+  let athletes = [
+    {
+      id: "ath_default",
+      name: "Atleta 1",
+      rfTPA: "04:15",
+      lthr: 168,
+      hrConfig: {
+        mode: "auto",
+        zones: [
+          { name: "Z1 Recupero", min: 0, max: 142, color: "var(--z1)" },
+          { name: "Z2 Fondo Lento", min: 143, max: 151, color: "var(--z2)" },
+          { name: "Z3 Fondo Medio", min: 152, max: 159, color: "var(--z3)" },
+          { name: "Z4 Soglia Anaerobica", min: 160, max: 167, color: "var(--z4)" },
+          { name: "Z5 Sopra Soglia", min: 168, max: 220, color: "var(--z5)" }
+        ]
+      }
+    }
+  ];
+  let currentAthleteId = "ath_default";
+
+  let allActivities = []; // Tutte le attività dal DB
+  let activities = [];    // Attività filtrate per l'atleta corrente
   let selectedActivityId = null;
+
   let workoutChartInstance = null;
   let pmcChartInstance = null;
   let mapInstance = null;
@@ -650,19 +705,128 @@
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
   const FLAT_COST = 3.6;
 
-  let hrConfig = {
-    mode: "auto",
-    zones: [
-      { name: "Z1 Recupero", min: 0, max: 142, color: "var(--z1)" },
-      { name: "Z2 Fondo Lento", min: 143, max: 151, color: "var(--z2)" },
-      { name: "Z3 Fondo Medio", min: 152, max: 159, color: "var(--z3)" },
-      { name: "Z4 Soglia Anaerobica", min: 160, max: 167, color: "var(--z4)" },
-      { name: "Z5 Sopra Soglia", min: 168, max: 220, color: "var(--z5)" }
-    ]
-  };
+  function getCurrentAthlete() {
+    return athletes.find(a => a.id === currentAthleteId) || athletes[0];
+  }
+
+  function loadAthletesFromStorage() {
+    const saved = localStorage.getItem('tp_athletes_data');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) athletes = parsed;
+      } catch (e) {
+        console.warn("Errore caricamento atleti", e);
+      }
+    }
+    const savedCurId = localStorage.getItem('tp_current_athlete_id');
+    if (savedCurId && athletes.some(a => a.id === savedCurId)) {
+      currentAthleteId = savedCurId;
+    } else {
+      currentAthleteId = athletes[0].id;
+    }
+  }
+
+  function saveAthletesToStorage() {
+    localStorage.setItem('tp_athletes_data', JSON.stringify(athletes));
+    localStorage.setItem('tp_current_athlete_id', currentAthleteId);
+  }
+
+  function renderAthleteSelector() {
+    const sel = document.getElementById('athleteSelect');
+    sel.innerHTML = athletes.map(a => `
+      <option value="${a.id}" ${a.id === currentAthleteId ? 'selected' : ''}>${a.name}</option>
+    `).join('');
+
+    const cur = getCurrentAthlete();
+    document.getElementById('rfTPA').value = cur.rfTPA || "04:15";
+    document.getElementById('lthr').value = cur.lthr || 168;
+    document.getElementById('lblCurAthleteNamePace').innerText = cur.name;
+    document.getElementById('dropzoneAthleteName').innerText = cur.name;
+    document.getElementById('pmcAthleteTitle').innerText = cur.name;
+    document.getElementById('listAthleteTitle').innerText = cur.name;
+    document.getElementById('viewContextTitle').innerText = `Riepilogo Carriera di ${cur.name}`;
+
+    updateHRZonesFromCurrentSettings();
+  }
+
+  function createNewAthlete() {
+    const name = prompt("Inserisci il nome del nuovo atleta:");
+    if (!name || !name.trim()) return;
+
+    const newId = "ath_" + Date.now();
+    const newAth = {
+      id: newId,
+      name: name.trim(),
+      rfTPA: "04:30",
+      lthr: 165,
+      hrConfig: {
+        mode: "auto",
+        zones: getAutoFrielZones(165)
+      }
+    };
+    athletes.push(newAth);
+    currentAthleteId = newId;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function renameCurrentAthlete() {
+    const cur = getCurrentAthlete();
+    const newName = prompt("Rinomina atleta:", cur.name);
+    if (!newName || !newName.trim()) return;
+    cur.name = newName.trim();
+    saveAthletesToStorage();
+    renderAthleteSelector();
+  }
+
+  async function deleteCurrentAthlete() {
+    if (athletes.length <= 1) {
+      alert("Deve essere presente almeno un atleta.");
+      return;
+    }
+    const cur = getCurrentAthlete();
+    if (!confirm(`Sei sicuro di voler eliminare l'atleta "${cur.name}" e tutte le sue corse associate?`)) return;
+
+    // Elimina tutte le attività di questo atleta
+    const toDelete = allActivities.filter(a => a.athleteId === cur.id);
+    for (const a of toDelete) {
+      await dbDeleteActivity(a.id);
+    }
+    allActivities = allActivities.filter(a => a.athleteId !== cur.id);
+
+    athletes = athletes.filter(a => a.id !== cur.id);
+    currentAthleteId = athletes[0].id;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function switchAthlete(newId) {
+    currentAthleteId = newId;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function filterActivitiesForCurrentAthlete() {
+    // Se un'attività vecchia non ha athleteId, la assegna a quello di default
+    allActivities.forEach(a => {
+      if (!a.athleteId) a.athleteId = athletes[0].id;
+    });
+
+    activities = allActivities.filter(a => a.athleteId === currentAthleteId);
+    showGlobalDashboard();
+
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+    checkThresholdUpdates();
+  }
 
   // ==========================================
-  // 2. MODULO IA (FALLBACK MULTI-MODELLO ANTI-OVERLOAD)
+  // 2. MODULO IA (GOOGLE GEMINI MULTI-MODELLO)
   // ==========================================
   function saveGeminiApiKey() {
     const key = document.getElementById('geminiApiKey').value.trim();
@@ -694,15 +858,12 @@
         candidateModels = [...new Set([...candidateModels, ...available])];
       }
     } catch (e) {
-      console.warn("Impossibile contattare ListModels, procedo con i candidati predefiniti", e);
+      console.warn("Impossibile contattare ListModels, procedo con candidati predefiniti", e);
     }
 
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
-      generationConfig: { 
-        temperature: 0.4, 
-        maxOutputTokens: 2500 
-      }
+      generationConfig: { temperature: 0.4, maxOutputTokens: 2500 }
     };
 
     let lastErrorMsg = "";
@@ -740,11 +901,9 @@
         } else {
           const errData = await response.json();
           lastErrorMsg = errData.error?.message || `Errore HTTP ${response.status}`;
-          console.warn(`Modello ${model} non disponibile:`, lastErrorMsg);
         }
       } catch (err) {
         lastErrorMsg = err.message;
-        console.warn(`Tentativo con ${model} fallito:`, err);
       }
     }
 
@@ -752,8 +911,9 @@
   }
 
   async function askAITrainingStatus() {
+    const cur = getCurrentAthlete();
     const pmc = computePMC(activities);
-    if (!pmc.length) return alert("Carica prima delle sessioni per analizzare lo stato di forma.");
+    if (!pmc.length) return alert(`Carica prima delle sessioni per analizzare lo stato di forma di ${cur.name}.`);
 
     const today = pmc[pmc.length - 1];
     const nowTime = Date.now();
@@ -765,11 +925,16 @@
 
     const box = document.getElementById('aiStatusBox');
     const content = document.getElementById('aiStatusContent');
+    document.getElementById('aiStatusTitle').innerText = `🤖 Valutazione Coach IA - ${cur.name}`;
     box.style.display = 'block';
     content.innerHTML = "<p>Interrogazione modello Gemini in corso...</p>";
 
     const prompt = `Agisci come un esperto allenatore di running e trail running (stile Joe Friel / TrainingPeaks). 
-Analizza i seguenti dati del mio carico di allenamento:
+Stai analizzando l'atleta: ${cur.name}.
+Parametri fisiologici attuali dell'atleta:
+- rFTPa (Passo Soglia): ${cur.rfTPA}/km
+- LTHR (FC Soglia): ${cur.lthr} bpm
+Dati del carico di allenamento:
 - Fitness attuale (CTL): ${today.ctl}
 - Fatica acuta (ATL): ${today.atl}
 - Forma/Freschezza (TSB): ${today.tsb}
@@ -777,7 +942,7 @@ Analizza i seguenti dati del mio carico di allenamento:
 - Chilometri ultimi 7gg: ${km7d} km
 - Training Stress Score (TSS) ultimi 7gg: ${tss7d}
 
-Forniscimi un'analisi tecnica completa e strutturata:
+Forniscimi un'analisi tecnica completa e personalizzata per ${cur.name}:
 1. **Stato Attuale e Rischio Sovraccarico**: interpreta i valori di TSB e Ramp Rate.
 2. **Adattamento Fisiologico**: stiamo costruendo o siamo in fase di stanchezza eccessiva?
 3. **Consiglio per i prossimi 2-3 giorni**: suggerisci se spingere con sessioni qualitative, fare fondo lento Z2 o prevedere un giorno di scarico attivo/riposo.`;
@@ -794,19 +959,21 @@ Forniscimi un'analisi tecnica completa e strutturata:
     if (!selectedActivityId) return;
     const act = activities.find(a => a.id === selectedActivityId);
     if (!act) return;
+    const cur = getCurrentAthlete();
 
     const box = document.getElementById('aiActivityBox');
     const content = document.getElementById('aiActivityContent');
     box.style.display = 'block';
-    content.innerHTML = `<p>Analisi dell'allenamento "${act.title}" in corso...</p>`;
+    content.innerHTML = `<p>Analisi dell'allenamento "${act.title}" in corso per ${cur.name}...</p>`;
 
     const u = act.uphill, d = act.downhill, f = act.flat;
     const uPace = u.dist > 10 ? formatSecToPace(u.time / (u.dist / 1000)) : "--";
     const dPace = d.dist > 10 ? formatSecToPace(d.time / (d.dist / 1000)) : "--";
 
     const prompt = `Agisci come un coach professionista di corsa e trail running.
-Analizza questa sessione di allenamento:
-- Nome/Data: ${act.title} (${act.dateStr})
+Analizza questa sessione di allenamento dell'atleta ${cur.name}:
+- Sessione: ${act.title} (${act.dateStr})
+- Parametri di riferimento atleta: Passo Soglia ${cur.rfTPA}/km, FC Soglia ${cur.lthr} bpm
 - Distanza: ${act.totalDistKm.toFixed(2)} km | D+: ${act.totalElevationGain}m | D-: ${act.totalElevationLoss}m
 - Tempo Totale: ${formatDuration(act.totalTimeSec)}
 - Passo Medio: ${formatSecToPace(act.avgPaceSec)} | Passo Normalizzato (NGP): ${formatSecToPace(act.globalNgpSec)}
@@ -833,20 +1000,8 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   // ==========================================
-  // 3. GESTIONE ZONE CARDIO
+  // 3. GESTIONE ZONE CARDIO SPECIFICHE PER ATLETA
   // ==========================================
-  function loadHRConfig() {
-    const saved = localStorage.getItem('tp_hr_config');
-    if (saved) {
-      try { hrConfig = JSON.parse(saved); } catch(e){}
-    }
-    updateHRZonesFromCurrentSettings();
-  }
-
-  function saveHRConfig() {
-    localStorage.setItem('tp_hr_config', JSON.stringify(hrConfig));
-  }
-
   function getAutoFrielZones(lthrVal) {
     return [
       { name: "Z1 Recupero", min: 0, max: Math.round(lthrVal * 0.85) - 1, color: "var(--z1)" },
@@ -858,21 +1013,31 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function updateHRZonesFromCurrentSettings() {
-    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
-    if (hrConfig.mode === "auto") {
-      hrConfig.zones = getAutoFrielZones(lthrVal);
+    const cur = getCurrentAthlete();
+    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || cur.lthr || 168;
+    cur.lthr = lthrVal;
+
+    if (!cur.hrConfig) {
+      cur.hrConfig = { mode: "auto", zones: getAutoFrielZones(lthrVal) };
+    }
+
+    if (cur.hrConfig.mode === "auto") {
+      cur.hrConfig.zones = getAutoFrielZones(lthrVal);
     }
     const badge = document.getElementById('hrZoneModeBadge');
     if (badge) {
-      badge.innerText = hrConfig.mode === "auto" ? "Auto (Friel LTHR)" : "Manuale Personalizzato";
-      badge.style.color = hrConfig.mode === "auto" ? "var(--accent-ctl)" : "var(--accent-primary)";
+      badge.innerText = cur.hrConfig.mode === "auto" ? "Auto (Friel LTHR)" : "Manuale Personalizzato";
+      badge.style.color = cur.hrConfig.mode === "auto" ? "var(--accent-ctl)" : "var(--accent-primary)";
     }
+    saveAthletesToStorage();
   }
 
   function openHRModal() {
+    const cur = getCurrentAthlete();
+    document.getElementById('hrModalTitle').innerText = `Configurazione Zone Cardio (BPM) - ${cur.name}`;
     document.getElementById('hrModal').style.display = 'flex';
-    document.getElementById('hrModeAuto').checked = (hrConfig.mode === "auto");
-    document.getElementById('hrModeManual').checked = (hrConfig.mode === "manual");
+    document.getElementById('hrModeAuto').checked = (cur.hrConfig.mode === "auto");
+    document.getElementById('hrModeManual').checked = (cur.hrConfig.mode === "manual");
     renderHRZonesEditList();
     toggleHRModeUI();
   }
@@ -882,10 +1047,11 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function toggleHRModeUI() {
+    const cur = getCurrentAthlete();
     const isAuto = document.getElementById('hrModeAuto').checked;
     const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
     if (isAuto) {
-      hrConfig.zones = getAutoFrielZones(lthrVal);
+      cur.hrConfig.zones = getAutoFrielZones(lthrVal);
       renderHRZonesEditList();
     }
     const inputs = document.querySelectorAll('#hrZonesEditContainer input');
@@ -893,8 +1059,9 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function renderHRZonesEditList() {
+    const cur = getCurrentAthlete();
     const cont = document.getElementById('hrZonesEditContainer');
-    cont.innerHTML = hrConfig.zones.map((z, idx) => `
+    cont.innerHTML = cur.hrConfig.zones.map((z, idx) => `
       <div class="zone-row-edit">
         <span style="color: ${z.color}; font-weight: 600;">${z.name}</span>
         <div style="display: flex; gap: 8px; align-items: center;">
@@ -908,25 +1075,26 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   async function saveHRZonesFromModal() {
+    const cur = getCurrentAthlete();
     const isManual = document.getElementById('hrModeManual').checked;
-    hrConfig.mode = isManual ? "manual" : "auto";
+    cur.hrConfig.mode = isManual ? "manual" : "auto";
 
     if (isManual) {
-      hrConfig.zones.forEach((z, idx) => {
+      cur.hrConfig.zones.forEach((z, idx) => {
         z.min = parseInt(document.getElementById(`hr_min_${idx}`).value, 10) || 0;
         z.max = parseInt(document.getElementById(`hr_max_${idx}`).value, 10) || 220;
       });
     } else {
       const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
-      hrConfig.zones = getAutoFrielZones(lthrVal);
+      cur.hrConfig.zones = getAutoFrielZones(lthrVal);
     }
 
-    saveHRConfig();
+    saveAthletesToStorage();
     closeHRModal();
     updateHRZonesFromCurrentSettings();
 
     for (let act of activities) {
-      recomputeActivityHRZones(act);
+      recomputeActivityHRZones(act, cur.hrConfig);
       await dbSaveActivity(act);
     }
 
@@ -934,24 +1102,25 @@ Fornisci un debriefing tecnico strutturato:
     else showGlobalDashboard();
   }
 
-  function recomputeActivityHRZones(act) {
+  function recomputeActivityHRZones(act, config) {
     if (!act.points || !act.points.length) return;
     let hrZoneTimes = [0, 0, 0, 0, 0];
+    const zones = config.zones;
 
     for (let i = 1; i < act.points.length; i++) {
       const dt = Math.max((act.points[i].time - act.points[i - 1].time) / 1000, 1);
       const hr = act.points[i].hr;
       if (hr) {
         let placed = false;
-        for (let z = 0; z < hrConfig.zones.length; z++) {
-          if (hr >= hrConfig.zones[z].min && hr <= hrConfig.zones[z].max) {
+        for (let z = 0; z < zones.length; z++) {
+          if (hr >= zones[z].min && hr <= zones[z].max) {
             hrZoneTimes[z] += dt;
             placed = true;
             break;
           }
         }
         if (!placed) {
-          if (hr < hrConfig.zones[0].min) hrZoneTimes[0] += dt;
+          if (hr < zones[0].min) hrZoneTimes[0] += dt;
           else hrZoneTimes[4] += dt;
         }
       }
@@ -1073,17 +1242,18 @@ Fornisci un debriefing tecnico strutturato:
       throw new Error("File JSON non valido o corrotto.");
     }
 
-    // Se è un export strutturato con activities e hrConfig
+    if (data && data.athletes && Array.isArray(data.athletes)) {
+      return { isMultiExport: true, athletes: data.athletes, activities: data.activities || [] };
+    }
+
     if (data && data.activities && Array.isArray(data.activities)) {
       return { isCollection: true, list: data.activities, hrConfig: data.hrConfig };
     }
 
-    // Se è un array di attività
     if (Array.isArray(data)) {
       return { isCollection: true, list: data };
     }
 
-    // Se è una singola attività pre-processata o grezza
     if (data && (data.points || data.totalDistKm || data.totalDist)) {
       return data;
     }
@@ -1200,7 +1370,9 @@ Fornisci un debriefing tecnico strutturato:
   // ==========================================
   // 7. MOTORE MATEMATICO
   // ==========================================
-  function processWorkout(raw, rFTPaSec, lthrVal) {
+  function processWorkout(raw, rFTPaSec, lthrVal, athleteId) {
+    const cur = getCurrentAthlete();
+    const activeAthleteId = athleteId || cur.id;
     const points = raw.points;
     const rFTPaSpeed = 1000 / rFTPaSec;
     let processedPoints = [];
@@ -1218,6 +1390,7 @@ Fornisci un debriefing tecnico strutturato:
 
     let paceZoneTimes = [0, 0, 0, 0, 0];
     let hrZoneTimes = [0, 0, 0, 0, 0];
+    const hrZones = cur.hrConfig ? cur.hrConfig.zones : getAutoFrielZones(lthrVal);
 
     let halfTime = totalTimeSec / 2;
     let p1Sum = 0, hr1Sum = 0, c1 = 0;
@@ -1244,15 +1417,15 @@ Fornisci un debriefing tecnico strutturato:
         if (hr > maxHR) maxHR = hr;
 
         let placed = false;
-        for (let z = 0; z < hrConfig.zones.length; z++) {
-          if (hr >= hrConfig.zones[z].min && hr <= hrConfig.zones[z].max) {
+        for (let z = 0; z < hrZones.length; z++) {
+          if (hr >= hrZones[z].min && hr <= hrZones[z].max) {
             hrZoneTimes[z] += dt;
             placed = true;
             break;
           }
         }
         if (!placed) {
-          if (hr < hrConfig.zones[0].min) hrZoneTimes[0] += dt;
+          if (hr < hrZones[0].min) hrZoneTimes[0] += dt;
           else hrZoneTimes[4] += dt;
         }
       }
@@ -1337,6 +1510,7 @@ Fornisci un debriefing tecnico strutturato:
 
     return {
       id: raw.id || ("act_" + raw.startTime + "_" + Math.random().toString(36).substr(2, 5)),
+      athleteId: activeAthleteId,
       title: raw.title,
       startTime: raw.startTime,
       dateStr: new Date(raw.startTime).toISOString().split('T')[0],
@@ -1427,6 +1601,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function checkThresholdUpdates() {
+    const cur = getCurrentAthlete();
     const currentPaceSec = parsePaceToSec(document.getElementById('rfTPA').value);
     const currentHR = parseInt(document.getElementById('lthr').value, 10) || 168;
 
@@ -1440,19 +1615,24 @@ Fornisci un debriefing tecnico strutturato:
       const hrStr = detected.hr ? `${detected.hr} bpm` : "non rilevata";
       
       document.getElementById('thresholdAlertText').innerText = 
-        `Miglior prestazione continuativa: Passo Soglia ${paceStr} | FC Soglia ${hrStr}`;
+        `Miglior prestazione per ${cur.name}: Passo Soglia ${paceStr} | FC Soglia ${hrStr}`;
       document.getElementById('thresholdAlert').style.display = 'flex';
     }
   }
 
   async function applyDetectedThresholds() {
     if (!pendingThreshold) return;
+    const cur = getCurrentAthlete();
     const newPaceStr = formatSecToPace(pendingThreshold.paceSec).replace('/km', '');
     document.getElementById('rfTPA').value = newPaceStr;
+    cur.rfTPA = newPaceStr;
+
     if (pendingThreshold.hr) {
       document.getElementById('lthr').value = pendingThreshold.hr;
+      cur.lthr = pendingThreshold.hr;
       updateHRZonesFromCurrentSettings();
     }
+    saveAthletesToStorage();
     document.getElementById('thresholdAlert').style.display = 'none';
 
     const rFTPaSec = pendingThreshold.paceSec;
@@ -1461,7 +1641,7 @@ Fornisci un debriefing tecnico strutturato:
       const globalNgpSpeed = 1000 / act.globalNgpSec;
       act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
       act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
-      recomputeActivityHRZones(act);
+      recomputeActivityHRZones(act, cur.hrConfig);
       await dbSaveActivity(act);
     }
 
@@ -1604,16 +1784,17 @@ Fornisci un debriefing tecnico strutturato:
   function showGlobalDashboard() {
     selectedActivityId = null;
     renderActivityList();
+    const cur = getCurrentAthlete();
 
     document.getElementById('viewContextLabel').innerText = "PANORAMICA GENERALE";
-    document.getElementById('viewContextTitle').innerText = "Riepilogo Totale di Carriera";
+    document.getElementById('viewContextTitle').innerText = `Riepilogo Carriera di ${cur.name}`;
     document.getElementById('btnBackToGlobal').style.display = "none";
     document.getElementById('btnAskAIActivity').style.display = "none";
     document.getElementById('aiActivityBox').style.display = "none";
     document.getElementById('notesBoxContainer').style.display = "none";
     document.getElementById('mapBoxContainer').style.display = "block";
-    document.getElementById('mapTitle').innerText = "Mappa Ultima Sessione Registrata";
-    document.getElementById('workoutChartTitle').innerText = "Volumi Mensili Storici (Km & Dislivello D+)";
+    document.getElementById('mapTitle').innerText = `Mappa Ultima Sessione (${cur.name})`;
+    document.getElementById('workoutChartTitle').innerText = `Volumi Mensili Storici (${cur.name})`;
 
     if (!activities.length) {
       document.getElementById('valDist').innerText = "--";
@@ -1691,13 +1872,13 @@ Fornisci un debriefing tecnico strutturato:
     const totKmEffort = totDist + (totDPlus / 100);
     const avgGlobalPaceSec = totDist > 0 ? (totTime / totDist) : 0;
 
-    document.getElementById('lblDist').innerText = "Distanza & Dislivello Totale";
+    document.getElementById('lblDist').innerText = "Distanza & D+ Totale";
     document.getElementById('valDist').innerText = `${totDist.toFixed(1)} km`;
     document.getElementById('valElevation').innerText = `D+ ${totDPlus}m | D- ${totDLoss}m`;
 
     document.getElementById('lblKmEffort').innerText = "Km-Sforzo Totali";
     document.getElementById('valKmEffort').innerText = `${Math.round(totKmEffort)} km`;
-    document.getElementById('subKmEffort').innerText = `Carriera aggregata`;
+    document.getElementById('subKmEffort').innerText = `Carriera ${cur.name}`;
 
     document.getElementById('lblTime').innerText = "Tempo Totale Corsa";
     document.getElementById('valTime').innerText = formatDuration(totTime);
@@ -1705,7 +1886,7 @@ Fornisci un debriefing tecnico strutturato:
 
     document.getElementById('lblNGP').innerText = "Sessioni Totali";
     document.getElementById('valNGP').innerText = activities.length;
-    document.getElementById('valIF').innerText = `Media: ${(totDist / activities.length).toFixed(1)} km/uscita`;
+    document.getElementById('valIF').innerText = `Media: ${(totDist / (activities.length || 1)).toFixed(1)} km/uscita`;
 
     document.getElementById('lblTSS').innerText = "Training Stress Totale";
     document.getElementById('valTSS').innerText = Math.round(totTSS);
@@ -1727,9 +1908,9 @@ Fornisci un debriefing tecnico strutturato:
     document.getElementById('lblDecoupling').innerText = "Corse Archiviate";
     document.getElementById('valDecoupling').innerText = `${activities.length} file`;
     document.getElementById('valDecoupling').style.color = "var(--text)";
-    document.getElementById('subDecoupling').innerText = `Nel database`;
+    document.getElementById('subDecoupling').innerText = `Profilo ${cur.name}`;
 
-    renderCustomTerrainTable(uTot, dTot, fTot, "Ripartizione Terreno Globale (Tutte le corse)");
+    renderCustomTerrainTable(uTot, dTot, fTot, `Ripartizione Terreno (${cur.name})`);
     renderMonthlyVolumeChart(activities);
 
     const sorted = [...activities].sort((a, b) => b.startTime - a.startTime);
@@ -1871,7 +2052,8 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function renderAllTimeMeanMaxTable(allTimeMap) {
-    document.getElementById('meanMaxTitle').innerText = "Record Assoluti di Prestazione (All-Time Mean Max)";
+    const cur = getCurrentAthlete();
+    document.getElementById('meanMaxTitle').innerText = `Record Assoluti di Prestazione (${cur.name})`;
     const tbody = document.getElementById('meanMaxTableBody');
     const windows = [
       { sec: 60, label: "1m" },
@@ -1900,6 +2082,7 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function renderDualZonesDirect(paceZoneTimes, hrZoneTimes, paceTitle, hrTitle) {
+    const cur = getCurrentAthlete();
     document.getElementById('paceZoneTitle').innerText = paceTitle;
     document.getElementById('hrZoneTitle').innerText = hrTitle;
 
@@ -1926,8 +2109,10 @@ Fornisci un debriefing tecnico strutturato:
 
     const hrCont = document.getElementById('hrZonesContainer');
     const totHR = hrZoneTimes ? hrZoneTimes.reduce((a, b) => a + b, 0) || 1 : 1;
+    const currentZones = cur.hrConfig ? cur.hrConfig.zones : getAutoFrielZones(cur.lthr);
+
     if (hrZoneTimes && hrZoneTimes.some(v => v > 0)) {
-      hrCont.innerHTML = hrConfig.zones.map((z, idx) => {
+      hrCont.innerHTML = currentZones.map((z, idx) => {
         const t = hrZoneTimes[idx] || 0;
         const pct = Math.round((t / totHR) * 100);
         const rangeText = `${z.min}-${z.max} bpm`;
@@ -2118,7 +2303,7 @@ Fornisci un debriefing tecnico strutturato:
     document.getElementById('actCount').innerText = activities.length;
 
     if (!activities.length) {
-      listEl.innerHTML = `<p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente.</p>`;
+      listEl.innerHTML = `<p style="padding: 14px; color: var(--muted); font-size: 0.82rem;">Nessuna corsa presente per questo atleta.</p>`;
       return;
     }
 
@@ -2143,16 +2328,12 @@ Fornisci un debriefing tecnico strutturato:
     event.stopPropagation();
     if (!confirm("Eliminare questa sessione?")) return;
     await dbDeleteActivity(id);
-    activities = activities.filter(a => a.id !== id);
-
-    showGlobalDashboard();
-    const pmc = computePMC(activities);
-    renderPMCChart(pmc);
-    updateTrainingStatusBanner(pmc, activities);
-    checkThresholdUpdates();
+    allActivities = allActivities.filter(a => a.id !== id);
+    filterActivitiesForCurrentAthlete();
   }
 
   async function handleFiles(files) {
+    const cur = getCurrentAthlete();
     const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
     const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
 
@@ -2160,35 +2341,46 @@ Fornisci un debriefing tecnico strutturato:
       try {
         const raw = await parseFile(file);
 
-        if (raw.isCollection) {
-          if (raw.hrConfig) {
-            hrConfig = raw.hrConfig;
-            saveHRConfig();
-            updateHRZonesFromCurrentSettings();
+        if (raw.isMultiExport) {
+          if (raw.athletes && Array.isArray(raw.athletes)) {
+            athletes = raw.athletes;
+            saveAthletesToStorage();
+            renderAthleteSelector();
           }
+          if (raw.activities && Array.isArray(raw.activities)) {
+            for (let item of raw.activities) {
+              await dbSaveActivity(item);
+              const idx = allActivities.findIndex(a => a.id === item.id);
+              if (idx >= 0) allActivities[idx] = item;
+              else allActivities.push(item);
+            }
+          }
+        } else if (raw.isCollection) {
           for (let item of raw.list) {
             let processed;
             if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
-              processed = processWorkout(item, rFTPaSec, lthrVal);
+              processed = processWorkout(item, rFTPaSec, lthrVal, cur.id);
             } else {
               processed = item;
+              if (!processed.athleteId) processed.athleteId = cur.id;
             }
             await dbSaveActivity(processed);
-            const idx = activities.findIndex(a => a.id === processed.id);
-            if (idx >= 0) activities[idx] = processed;
-            else activities.push(processed);
+            const idx = allActivities.findIndex(a => a.id === processed.id);
+            if (idx >= 0) allActivities[idx] = processed;
+            else allActivities.push(processed);
           }
         } else {
           let processed;
           if (raw.points && raw.points.length && (!raw.paceZoneTimes || !raw.uphill)) {
-            processed = processWorkout(raw, rFTPaSec, lthrVal);
+            processed = processWorkout(raw, rFTPaSec, lthrVal, cur.id);
           } else {
             processed = raw;
+            if (!processed.athleteId) processed.athleteId = cur.id;
           }
           await dbSaveActivity(processed);
-          const idx = activities.findIndex(a => a.id === processed.id);
-          if (idx >= 0) activities[idx] = processed;
-          else activities.push(processed);
+          const idx = allActivities.findIndex(a => a.id === processed.id);
+          if (idx >= 0) allActivities[idx] = processed;
+          else allActivities.push(processed);
         }
       } catch (err) {
         console.error(`Errore file ${file.name}:`, err);
@@ -2196,17 +2388,11 @@ Fornisci un debriefing tecnico strutturato:
       }
     }
 
-    if (activities.length) {
-      showGlobalDashboard();
-      const pmc = computePMC(activities);
-      renderPMCChart(pmc);
-      updateTrainingStatusBanner(pmc, activities);
-      checkThresholdUpdates();
-    }
+    filterActivitiesForCurrentAthlete();
   }
 
   // ==========================================
-  // 15. GOOGLE DRIVE SYNC
+  // 15. GOOGLE DRIVE SYNC (COLLEZIONE MULTI-ATLETA)
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim();
@@ -2225,7 +2411,7 @@ Fornisci un debriefing tecnico strutturato:
           return;
         }
         accessToken = tokenResponse.access_token;
-        document.getElementById('btnGoogleAuth').innerText = "✅ Connesso a Drive";
+        document.getElementById('btnGoogleAuth').innerText = "✅ Connesso";
         document.getElementById('btnPushDrive').style.display = "flex";
         document.getElementById('btnPullDrive').style.display = "flex";
       }
@@ -2256,7 +2442,10 @@ Fornisci un debriefing tecnico strutturato:
 
     try {
       const allActs = await dbGetAllActivities();
-      const payload = { activities: allActs, hrConfig: hrConfig };
+      const payload = {
+        athletes: athletes,
+        activities: allActs
+      };
       const content = JSON.stringify(payload);
       const fileId = await findDriveFileId();
 
@@ -2279,10 +2468,10 @@ Fornisci un debriefing tecnico strutturato:
         });
       }
       btn.innerText = "✅ Salvato!";
-      setTimeout(() => { btn.innerText = "⬆️ Salva su Drive"; }, 2000);
+      setTimeout(() => { btn.innerText = "⬆️ Salva"; }, 2000);
     } catch (err) {
       alert("Errore salvataggio: " + err.message);
-      btn.innerText = "⬆️ Salva su Drive";
+      btn.innerText = "⬆️ Salva";
     }
   }
 
@@ -2295,7 +2484,7 @@ Fornisci un debriefing tecnico strutturato:
       const fileId = await findDriveFileId();
       if (!fileId) {
         alert("Nessun file trovato con il nome " + DRIVE_FILENAME);
-        btn.innerText = "⬇️ Sincronizza da Drive";
+        btn.innerText = "⬇️ Sincronizza";
         return;
       }
 
@@ -2304,31 +2493,29 @@ Fornisci un debriefing tecnico strutturato:
       });
       const data = await res.json();
 
-      let cloudActs = Array.isArray(data) ? data : data.activities;
-      if (data.hrConfig) {
-        hrConfig = data.hrConfig;
-        saveHRConfig();
+      if (data.athletes && Array.isArray(data.athletes)) {
+        athletes = data.athletes;
+        saveAthletesToStorage();
+        renderAthleteSelector();
       }
+
+      let cloudActs = data.activities || (Array.isArray(data) ? data : []);
 
       if (Array.isArray(cloudActs)) {
         await dbClearAll();
         for (let act of cloudActs) {
+          if (!act.athleteId) act.athleteId = athletes[0].id;
           await dbSaveActivity(act);
         }
-        activities = cloudActs;
-        updateHRZonesFromCurrentSettings();
-        showGlobalDashboard();
-        const pmc = computePMC(activities);
-        renderPMCChart(pmc);
-        updateTrainingStatusBanner(pmc, activities);
-        checkThresholdUpdates();
+        allActivities = cloudActs;
+        filterActivitiesForCurrentAthlete();
 
         btn.innerText = "✅ Sincronizzato!";
-        setTimeout(() => { btn.innerText = "⬇️ Sincronizza da Drive"; }, 2000);
+        setTimeout(() => { btn.innerText = "⬇️ Sincronizza"; }, 2000);
       }
     } catch (err) {
       alert("Errore download: " + err.message);
-      btn.innerText = "⬇️ Sincronizza da Drive";
+      btn.innerText = "⬇️ Sincronizza";
     }
   }
 
@@ -2348,7 +2535,11 @@ Fornisci un debriefing tecnico strutturato:
   });
 
   document.getElementById('rfTPA').addEventListener('change', async () => {
-    const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
+    const cur = getCurrentAthlete();
+    cur.rfTPA = document.getElementById('rfTPA').value;
+    saveAthletesToStorage();
+
+    const rFTPaSec = parsePaceToSec(cur.rfTPA);
     for (let act of activities) {
       const rFTPaSpeed = 1000 / rFTPaSec;
       const globalNgpSpeed = 1000 / act.globalNgpSec;
@@ -2365,31 +2556,27 @@ Fornisci un debriefing tecnico strutturato:
   });
 
   document.getElementById('lthr').addEventListener('change', () => {
-    if (hrConfig.mode === "auto") {
-      updateHRZonesFromCurrentSettings();
-      saveHRConfig();
-      activities.forEach(a => recomputeActivityHRZones(a));
-      if (selectedActivityId) selectActivity(selectedActivityId);
-      else showGlobalDashboard();
-    }
+    updateHRZonesFromCurrentSettings();
+    const cur = getCurrentAthlete();
+    activities.forEach(a => recomputeActivityHRZones(a, cur.hrConfig));
+    if (selectedActivityId) selectActivity(selectedActivityId);
+    else showGlobalDashboard();
   });
 
   window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
-    loadHRConfig();
+    loadAthletesFromStorage();
+    renderAthleteSelector();
 
     const savedClientId = localStorage.getItem('tp_google_client_id');
-    if (savedClientId) {
-      document.getElementById('clientIdInput').value = savedClientId;
-    }
+    if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
 
     const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
-    if (savedGeminiKey) {
-      document.getElementById('geminiApiKey').value = savedGeminiKey;
-    }
+    if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
 
-    const rFTPaSec = parsePaceToSec(document.getElementById('rfTPA').value);
-    const lthrVal = parseInt(document.getElementById('lthr').value, 10) || 168;
+    const cur = getCurrentAthlete();
+    const rFTPaSec = parsePaceToSec(cur.rfTPA);
+    const lthrVal = cur.lthr;
 
     try {
       const res = await fetch('activities.json?t=' + Date.now());
@@ -2398,9 +2585,11 @@ Fornisci un debriefing tecnico strutturato:
         const feedList = Array.isArray(cloudFeed) ? cloudFeed : (cloudFeed.activities || []);
         
         for (let item of feedList) {
+          if (!item.athleteId) item.athleteId = athletes[0].id;
           if (item.points && item.points.length && (!item.paceZoneTimes || !item.uphill)) {
             const raw = {
               id: item.id,
+              athleteId: item.athleteId,
               title: item.title,
               points: item.points,
               totalDist: item.totalDistKm * 1000,
@@ -2408,7 +2597,7 @@ Fornisci un debriefing tecnico strutturato:
               totalElevationLoss: item.totalElevationLoss || 0,
               startTime: item.startTime
             };
-            const processed = processWorkout(raw, rFTPaSec, lthrVal);
+            const processed = processWorkout(raw, rFTPaSec, lthrVal, item.athleteId);
             await dbSaveActivity(processed);
           } else {
             await dbSaveActivity(item);
@@ -2419,15 +2608,8 @@ Fornisci un debriefing tecnico strutturato:
       console.log("Nessun feed activities.json trovato o caricamento offline, uso database locale.");
     }
 
-    activities = await dbGetAllActivities();
-    showGlobalDashboard();
-
-    if (activities.length) {
-      const pmc = computePMC(activities);
-      renderPMCChart(pmc);
-      updateTrainingStatusBanner(pmc, activities);
-      checkThresholdUpdates();
-    }
+    allActivities = await dbGetAllActivities();
+    filterActivitiesForCurrentAthlete();
   });
 </script>
 
