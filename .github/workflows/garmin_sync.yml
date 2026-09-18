@@ -1,52 +1,37 @@
-name: Sync Garmin Connect
+name: Sync Garmin & Push Workouts
 
 on:
   schedule:
-    # Esegue il sync in automatico ogni 2 ore
-    - cron: '0 */2 * * *'
-  workflow_dispatch: # Avvio manuale con un clic
-
-permissions:
-  contents: write
+    - cron: '0 5 * * *'  # sincronizzazione automatica notturna
+  workflow_dispatch:      # <-- FONDAMENTALE: permette l'avvio immediato dal browser
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          pip install garminconnect fitparse curl_cffi garth
+          pip install garminconnect
 
-      - name: Run Garmin Sync
+      - name: Run sync script
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
         run: |
           python sync_garmin.py
 
-      - name: Commit & Push Nuove Attivita
+      - name: Commit & push updated activities
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -f activities.json ]; then
-            git add activities.json
-            if git diff --staged --quiet; then
-              echo "Nessuna nuova attività da salvare."
-            else
-              git commit -m "Auto-sync corse da Garmin Connect [skip ci]"
-              git push origin HEAD
-            fi
-          else
-            echo "File activities.json non generato."
-          fi
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add activities.json
+          git commit -m "Auto-sync Garmin activities [skip ci]" || echo "Nessuna modifica da salvare"
+          git push
