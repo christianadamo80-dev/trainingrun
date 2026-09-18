@@ -1,161 +1,153 @@
 import os
 import json
-import io
-import zipfile
-from datetime import datetime
+import datetime
 from garminconnect import Garmin
-from fitparse import FitFile
 
-GARMIN_EMAIL = os.environ.get("GARMIN_EMAIL")
-GARMIN_PASSWORD = os.environ.get("GARMIN_PASSWORD")
-OUTPUT_FILE = "activities.json"
+GARMIN_EMAIL = os.getenv("GARMIN_EMAIL")
+GARMIN_PASSWORD = os.getenv("GARMIN_PASSWORD")
 
-def get_garmin_client():
+def login_garmin():
     client = Garmin(GARMIN_EMAIL, GARMIN_PASSWORD)
-    # Imposta un User-Agent moderno per evitare blocchi Cloudflare
-    client.garth.sess.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    })
     client.login()
     return client
 
-def parse_fit_bytes(fit_bytes, title, start_time_ms):
-    fitfile = FitFile(io.BytesIO(fit_bytes))
-    points = []
-    total_dist = 0
-    total_ele_gain = 0
-    total_ele_loss = 0
-    last_ele = None
+def sync_activities(client):
+    today = datetime.date.today()
+    start_date = today - datetime.timedelta(days=14)
+    print(f"Scaricamento attività dal {start_date} al {today}...")
+    
+    try:
+        activities = client.get_activities_by_date(start_date.isoformat(), today.isoformat(), "running")
+    except Exception as e:
+        print(f"Nessuna attività scaricata o errore: {e}")
+        activities = []
 
-    for record in fitfile.get_messages("record"):
-        data = {d.name: d.value for d in record}
-        lat = data.get("position_lat")
-        lon = data.get("position_long")
-        if lat is None or lon is None:
-            continue
-
-        # Garmin salva in semicircles, convertiamo in gradi
-        lat_deg = lat * (180 / 2**31)
-        lon_deg = lon * (180 / 2**31)
-        alt = data.get("enhanced_altitude") or data.get("altitude") or 0
-        dist = data.get("enhanced_distance") or data.get("distance") or 0
-        hr = data.get("heart_rate")
-        cad = data.get("cadence")
-        pwr = data.get("power")
-        timestamp = data.get("timestamp")
-        time_ms = int(timestamp.timestamp() * 1000) if timestamp else 0
-
-        if last_ele is not None:
-            diff = alt - last_ele
-            if diff > 0.5:
-                total_ele_gain += diff
-            elif diff < -0.5:
-                total_ele_loss += abs(diff)
-        last_ele = alt
-        total_dist = max(total_dist, dist)
-
-        points.append({
-            "lat": round(lat_deg, 6),
-            "lon": round(lon_deg, 6),
-            "ele": round(alt, 1),
-            "time": time_ms,
-            "dist": round(dist, 1),
-            "hr": hr,
-            "cadence": cad,
-            "power": pwr
-        })
-
-    if not points:
-        return None
-
-    duration_sec = max(1, (points[-1]["time"] - points[0]["time"]) // 1000)
-    avg_speed = total_dist / duration_sec if duration_sec > 0 else 0
-    avg_pace_sec = round(1000 / avg_speed) if avg_speed > 0.5 else 0
-
-    return {
-        "id": f"act_garmin_{start_time_ms}",
-        "title": title or "Corsa Garmin",
-        "startTime": start_time_ms,
-        "dateStr": datetime.fromtimestamp(start_time_ms / 1000).strftime("%Y-%m-%d"),
-        "totalDistKm": round(total_dist / 1000, 2),
-        "totalElevationGain": round(total_ele_gain),
-        "totalElevationLoss": round(total_ele_loss),
-        "totalTimeSec": duration_sec,
-        "avgPaceSec": avg_pace_sec,
-        "globalNgpSec": avg_pace_sec, # Normalizzato dal client all'apertura
-        "intensityFactor": 1.0,
-        "rTSS": round((duration_sec / 3600) * 60, 1),
-        "kmEffort": round((total_dist / 1000) + (total_ele_gain / 100), 1),
-        "points": points
-    }
-
-def main():
-    if not GARMIN_EMAIL or not GARMIN_PASSWORD:
-        print("Credenziali Garmin mancanti nei Secrets.")
-        return
-
-    # Carica storico esistente se presente
+    # Carica il file locale se esiste
     existing_activities = []
-    if os.path.exists(OUTPUT_FILE):
+    if os.path.exists("activities.json"):
         try:
-            with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            with open("activities.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
                 existing_activities = data if isinstance(data, list) else data.get("activities", [])
-        except Exception as e:
-            print(f"Errore lettura file esistente: {e}")
+        except Exception:
+            existing_activities = []
 
-    existing_ids = {a["id"] for a in existing_activities}
-
-    print("Connessione a Garmin Connect...")
-    client = get_garmin_client()
-    print("Login effettuato. Recupero ultime sessioni...")
-
-    # Recupera le ultime 10 corse
-    activities = client.get_activities(0, 10)
+    existing_ids = {str(a.get("id")) for a in existing_activities}
     new_found = 0
 
-    for act in reversed(activities):
-        # Filtra solo le attività di corsa/trail running
-        activity_type = act.get("activityType", {}).get("typeKey", "")
-        if "running" not in activity_type:
-            continue
+    for act in activities:
+        act_id = str(act.get("activityId"))
+        if act_id not in existing_ids:
+            start_time = act.get("startTimeLocal", "")
+            try:
+                dt = datetime.datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                ts = int(dt.timestamp() * 1000)
+            except Exception:
+                ts = int(datetime.datetime.now().timestamp() * 1000)
 
-        act_id = act.get("activityId")
-        start_time_str = act.get("startTimeLocal")
-        try:
-            dt = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
-            start_ms = int(dt.timestamp() * 1000)
-        except:
-            start_ms = int(datetime.now().timestamp() * 1000)
+            dist_km = act.get("distance", 0.0) / 1000.0
+            duration_sec = act.get("duration", 0.0)
+            elev_gain = act.get("elevationGain", 0.0) or 0.0
 
-        custom_id = f"act_garmin_{start_ms}"
-        if custom_id in existing_ids:
-            continue
+            item = {
+                "id": "garmin_" + act_id,
+                "title": act.get("activityName", "Corsa"),
+                "startTime": ts,
+                "dateStr": act.get("startTimeLocal", "")[:10],
+                "totalDistKm": round(dist_km, 2),
+                "totalElevationGain": round(elev_gain),
+                "totalElevationLoss": 0,
+                "totalTimeSec": round(duration_sec),
+                "avgPaceSec": round(duration_sec / dist_km) if dist_km > 0 else 0,
+                "globalNgpSec": round(duration_sec / dist_km) if dist_km > 0 else 0,
+                "intensityFactor": 0.85,
+                "rTSS": round((duration_sec / 3600.0) * 60),
+                "kmEffort": round(dist_km + (elev_gain / 100.0), 1),
+                "vam": 0,
+                "avgHR": round(act.get("averageHR")) if act.get("averageHR") else None,
+                "maxHR": round(act.get("maxHR")) if act.get("maxHR") else None,
+                "points": []
+            }
+            existing_activities.append(item)
+            new_found += 1
 
-        title = act.get("activityName", "Corsa")
-        print(f"Download nuova corsa: {title} ({act_id})...")
-
-        try:
-            # Scarica il file FIT compresso in zip da Garmin
-            fit_zip = client.download_activity(act_id, dl_fmt=client.ActivityDownloadFormat.ORIGINAL)
-            with zipfile.ZipFile(io.BytesIO(fit_zip)) as z:
-                for filename in z.namelist():
-                    if filename.endswith(".fit"):
-                        with z.open(filename) as fit_file:
-                            parsed = parse_fit_bytes(fit_file.read(), title, start_ms)
-                            if parsed:
-                                existing_activities.append(parsed)
-                                existing_ids.add(custom_id)
-                                new_found += 1
-        except Exception as e:
-            print(f"Errore parsing attività {act_id}: {e}")
-
-    if new_found > 0:
-        print(f"Salvataggio di {new_found} nuove corse in {OUTPUT_FILE}...")
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            json.dump(existing_activities, f, ensure_ascii=False)
+    if new_found > 0 or not os.path.exists("activities.json"):
+        with open("activities.json", "w", encoding="utf-8") as f:
+            json.dump(existing_activities, f, indent=2)
+        print(f"Salvate {new_found} nuove attività in activities.json.")
     else:
-        print("Nessuna nuova corsa trovata.")
+        print("Nessuna nuova attività trovata.")
+
+def push_scheduled_workouts(client):
+    if not os.path.exists("scheduled_workouts.json"):
+        print("Nessun file scheduled_workouts.json trovato. Salto la pianificazione.")
+        return
+
+    try:
+        with open("scheduled_workouts.json", "r", encoding="utf-8") as f:
+            workouts = json.load(f)
+    except Exception as e:
+        print(f"Errore lettura scheduled_workouts.json: {e}")
+        return
+
+    if not workouts:
+        return
+
+    print(f"Trovati {len(workouts)} allenamenti in scheduled_workouts.json. Sincronizzazione con Garmin Connect...")
+    today_str = datetime.date.today().isoformat()
+
+    for w in workouts:
+        date_str = w.get("date") # Formato YYYY-MM-DD
+        if not date_str or date_str < today_str:
+            continue # Salta allenamenti passati
+
+        workout_name = w.get("name", "Allenamento Pro")
+        duration_mins = w.get("durationMinutes", 45)
+        description = w.get("description", "Allenamento pianificato dalla dashboard")
+
+        # Payload strutturato compatibile con Garmin Connect
+        workout_payload = {
+            "workoutName": workout_name,
+            "description": description,
+            "sportType": {
+                "sportTypeId": 1,
+                "sportTypeKey": "running"
+            },
+            "workoutSegments": [
+                {
+                    "segmentOrder": 1,
+                    "sportType": {"sportTypeId": 1, "sportTypeKey": "running"},
+                    "workoutSteps": [
+                        {
+                            "type": "ExecutableStepDTO",
+                            "stepOrder": 1,
+                            "stepType": {"stepTypeId": 3, "stepTypeKey": "interval"},
+                            "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time"},
+                            "endConditionValue": duration_mins * 60,
+                            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
+                        }
+                    ]
+                }
+            ]
+        }
+
+        try:
+            print(f"Caricamento workout: {workout_name} per il {date_str}...")
+            res = client.upload_workout(json.dumps(workout_payload))
+            workout_id = res.get("workoutId") or res.get("workout_id")
+            if workout_id:
+                client.schedule_workout(workout_id, date_str)
+                print(f"✅ Workout '{workout_name}' programmato con successo per il {date_str}!")
+            else:
+                print(f"Workout caricato ma ID non restituito: {res}")
+        except Exception as e:
+            print(f"Nota/Errore upload workout '{workout_name}': {e}")
 
 if __name__ == "__main__":
-    main()
+    if not GARMIN_EMAIL or not GARMIN_PASSWORD:
+        print("Credenziali Garmin non impostate.")
+        exit(1)
+    
+    gc = login_garmin()
+    sync_activities(gc)
+    push_scheduled_workouts(gc)
