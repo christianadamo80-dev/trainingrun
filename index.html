@@ -179,7 +179,6 @@
     .cal-cell.different-month { opacity: 0.35; }
     .cal-cell-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
 
-    /* Badge Workout Calendario */
     .cal-item {
       font-size: 0.72rem;
       padding: 4px 6px;
@@ -292,25 +291,29 @@
         <button class="btn-sync danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteCurrentAthlete()">🗑️</button>
       </div>
 
-      <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()"><span>☁️ Drive</span></button>
-      <button class="btn-sync" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()"><span>⬆️ Salva</span></button>
-      <button class="btn-sync" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()"><span>⬇️ Sync</span></button>
+      <button class="btn-sync primary" id="btnGoogleAuth" onclick="handleAuthClick()"><span>☁️ Connetti Drive</span></button>
+      <button class="btn-sync" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()"><span>⬆️ Salva su Drive</span></button>
+      <button class="btn-sync" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()"><span>⬇️ Sync da Drive</span></button>
     </div>
   </header>
 
   <!-- Barra Impostazioni -->
   <div class="settings-bar">
     <div>
-      <label for="ghRepoInput">GitHub Repo (username/repo):</label>
-      <input type="text" id="ghRepoInput" style="width: 160px; text-align: left;" placeholder="es. mario/trail-suite" onchange="saveGitHubCredentials()">
+      <label for="clientIdInput">Google Drive Client ID:</label>
+      <input type="text" id="clientIdInput" style="width: 170px; text-align: left;" placeholder="Client ID OAuth2" onchange="saveDriveClientId()">
+    </div>
+    <div>
+      <label for="ghRepoInput">GitHub Repo (user/repo):</label>
+      <input type="text" id="ghRepoInput" style="width: 150px; text-align: left;" placeholder="es. mario/trail-suite" onchange="saveGitHubCredentials()">
     </div>
     <div>
       <label for="ghTokenInput">GitHub Token (PAT):</label>
-      <input type="password" id="ghTokenInput" style="width: 140px; text-align: left;" placeholder="ghp_..." onchange="saveGitHubCredentials()">
+      <input type="password" id="ghTokenInput" style="width: 130px; text-align: left;" placeholder="ghp_..." onchange="saveGitHubCredentials()">
     </div>
     <div>
       <label for="geminiApiKey">Gemini API Key:</label>
-      <input type="password" id="geminiApiKey" style="width: 140px; text-align: left;" placeholder="Chiave AI Studio" onchange="saveGeminiApiKey()">
+      <input type="password" id="geminiApiKey" style="width: 130px; text-align: left;" placeholder="Chiave AI Studio" onchange="saveGeminiApiKey()">
     </div>
     <div>
       <label for="rfTPA">rFTPa (<span id="lblCurAthleteNamePace">Atleta</span>):</label>
@@ -360,7 +363,7 @@
         <button class="btn-sync" onclick="navigateCalendar(-1)">◀ Mese Prec.</button>
         <button class="btn-sync" onclick="navigateCalendar(0)">Oggi</button>
         <button class="btn-sync" onclick="navigateCalendar(1)">Mese Succ. ▶</button>
-        <h2 id="calendarTitle" style="font-size: 1.1rem; margin-left: 10px; font-weight: 700;">Settembre 2026</h2>
+        <h2 id="calendarTitle" style="font-size: 1.1rem; margin-left: 10px; font-weight: 700;">Calendario</h2>
       </div>
 
       <div style="display: flex; gap: 8px; align-items: center;">
@@ -507,7 +510,7 @@
 
   // Calendario
   let calendarCurrentDate = new Date();
-  let calendarViewMode = 'month'; // 'month' o 'week'
+  let calendarViewMode = 'month';
 
   let workoutChartInstance = null;
   let pmcChartInstance = null;
@@ -554,6 +557,11 @@
     localStorage.setItem('tp_gh_token', document.getElementById('ghTokenInput').value.trim());
   }
 
+  function saveDriveClientId() {
+    localStorage.setItem('tp_google_client_id', document.getElementById('clientIdInput').value.trim());
+    tokenClient = null; // Forza la re-inizializzazione col nuovo ID
+  }
+
   function renderAthleteSelector() {
     const sel = document.getElementById('athleteSelect');
     sel.innerHTML = athletes.map(a => `
@@ -591,7 +599,150 @@
   }
 
   // ==========================================
-  // 2. CALENDARIO SETTIMANALE & MENSILE (TP STYLE)
+  // 2. GOOGLE DRIVE OAUTH2 INTELLIGENTE
+  // ==========================================
+  function initGoogleOAuth() {
+    const clientId = document.getElementById('clientIdInput').value.trim() || localStorage.getItem('tp_google_client_id');
+    if (!clientId) {
+      alert("Inserisci il tuo Google Drive Client ID nelle impostazioni in alto per connetterti.");
+      return false;
+    }
+    localStorage.setItem('tp_google_client_id', clientId);
+
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+      alert("Libreria Google Identity non ancora caricata. Verifica la connessione a internet o riprova tra pochi istanti.");
+      return false;
+    }
+
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: DRIVE_SCOPE,
+        callback: (tokenResponse) => {
+          if (tokenResponse.error) {
+            alert("Autenticazione Google Drive fallita: " + tokenResponse.error);
+            return;
+          }
+          accessToken = tokenResponse.access_token;
+          document.getElementById('btnGoogleAuth').innerHTML = "<span>✅ Connesso a Drive</span>";
+          document.getElementById('btnPushDrive').style.display = "flex";
+          document.getElementById('btnPullDrive').style.display = "flex";
+        }
+      });
+      return true;
+    } catch (err) {
+      alert("Errore inizializzazione Google Client: " + err.message);
+      return false;
+    }
+  }
+
+  function handleAuthClick() {
+    if (!tokenClient) {
+      if (!initGoogleOAuth()) return;
+    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+
+  async function findDriveFileId() {
+    const query = encodeURIComponent(`name = '${DRIVE_FILENAME}' and trashed = false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    return data.files && data.files.length ? data.files[0].id : null;
+  }
+
+  async function saveToGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Google Drive!");
+    const btn = document.getElementById('btnPushDrive');
+    btn.innerText = "Salvataggio...";
+
+    try {
+      const allActs = await dbGetAllActivities();
+      const payload = {
+        athletes: athletes,
+        activities: allActs,
+        scheduledWorkouts: scheduledWorkouts
+      };
+      const content = JSON.stringify(payload);
+      const fileId = await findDriveFileId();
+
+      if (fileId) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: content
+        });
+      } else {
+        const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', new Blob([content], { type: 'application/json' }));
+
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: form
+        });
+      }
+      btn.innerText = "✅ Salvato!";
+      setTimeout(() => { btn.innerText = "⬆️ Salva su Drive"; }, 2000);
+    } catch (err) {
+      alert("Errore salvataggio Drive: " + err.message);
+      btn.innerText = "⬆️ Salva su Drive";
+    }
+  }
+
+  async function loadFromGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Google Drive!");
+    const btn = document.getElementById('btnPullDrive');
+    btn.innerText = "Download...";
+
+    try {
+      const fileId = await findDriveFileId();
+      if (!fileId) {
+        alert("Nessun backup trovato su Drive con il nome " + DRIVE_FILENAME);
+        btn.innerText = "⬇️ Sync da Drive";
+        return;
+      }
+
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+
+      if (data.athletes && Array.isArray(data.athletes)) {
+        athletes = data.athletes;
+        saveAthletesToStorage();
+        renderAthleteSelector();
+      }
+
+      if (data.scheduledWorkouts && Array.isArray(data.scheduledWorkouts)) {
+        scheduledWorkouts = data.scheduledWorkouts;
+        saveWorkoutsToStorage();
+      }
+
+      let cloudActs = data.activities || (Array.isArray(data) ? data : []);
+      if (Array.isArray(cloudActs)) {
+        await dbClearAll();
+        for (let act of cloudActs) {
+          if (!act.athleteId) act.athleteId = athletes[0].id;
+          await dbSaveActivity(act);
+        }
+        allActivities = cloudActs;
+        filterActivitiesForCurrentAthlete();
+
+        btn.innerText = "✅ Sincronizzato!";
+        setTimeout(() => { btn.innerText = "⬇️ Sync da Drive"; }, 2000);
+      }
+    } catch (err) {
+      alert("Errore sincronizzazione da Drive: " + err.message);
+      btn.innerText = "⬇️ Sync da Drive";
+    }
+  }
+
+  // ==========================================
+  // 3. CALENDARIO SETTIMANALE & MENSILE
   // ==========================================
   function setCalendarView(mode) {
     calendarViewMode = mode;
@@ -628,36 +779,21 @@
 
     if (calendarViewMode === 'month') {
       const firstDay = new Date(year, month, 1);
-      const startingDay = (firstDay.getDay() + 6) % 7; // Lunedì = 0
+      const startingDay = (firstDay.getDay() + 6) % 7;
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const prevMonthDays = new Date(year, month, 0).getDate();
 
-      // Giorni mese precedente
       for (let i = startingDay - 1; i >= 0; i--) {
-        daysToRender.push({
-          date: new Date(year, month - 1, prevMonthDays - i),
-          currentMonth: false
-        });
+        daysToRender.push({ date: new Date(year, month - 1, prevMonthDays - i), currentMonth: false });
       }
-
-      // Giorni mese corrente
       for (let i = 1; i <= daysInMonth; i++) {
-        daysToRender.push({
-          date: new Date(year, month, i),
-          currentMonth: true
-        });
+        daysToRender.push({ date: new Date(year, month, i), currentMonth: true });
       }
-
-      // Giorni mese successivo per completare la griglia a 35/42 celle
       const remaining = (7 - (daysToRender.length % 7)) % 7;
       for (let i = 1; i <= remaining; i++) {
-        daysToRender.push({
-          date: new Date(year, month + 1, i),
-          currentMonth: false
-        });
+        daysToRender.push({ date: new Date(year, month + 1, i), currentMonth: false });
       }
     } else {
-      // Vista Settimanale
       const curr = new Date(calendarCurrentDate);
       const day = (curr.getDay() + 6) % 7;
       const monday = new Date(curr.setDate(curr.getDate() - day));
@@ -665,10 +801,7 @@
       for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
-        daysToRender.push({
-          date: d,
-          currentMonth: d.getMonth() === month
-        });
+        daysToRender.push({ date: d, currentMonth: d.getMonth() === month });
       }
     }
 
@@ -682,7 +815,6 @@
       cell.className = `cal-cell ${item.currentMonth ? '' : 'different-month'} ${isToday ? 'today' : ''}`;
       cell.onclick = () => openWorkoutBuilderModal(dStr);
 
-      // Cerca attività completate e pianificate
       const completedActs = activities.filter(a => a.dateStr === dStr);
       const plannedActs = scheduledWorkouts.filter(w => (!w.athleteId || w.athleteId === cur.id) && w.date === dStr);
 
@@ -693,7 +825,6 @@
         </div>
       `;
 
-      // Badge corse completate
       completedActs.forEach(act => {
         contentHTML += `
           <div class="cal-item completed" title="${act.title}">
@@ -703,7 +834,6 @@
         `;
       });
 
-      // Badge allenamenti pianificati
       plannedActs.forEach(p => {
         contentHTML += `
           <div class="cal-item planned" title="${p.name}">
@@ -719,7 +849,7 @@
   }
 
   // ==========================================
-  // 3. WORKOUT BUILDER A STEP (TP STYLE)
+  // 4. WORKOUT BUILDER MODAL
   // ==========================================
   let currentWorkoutSteps = [];
 
@@ -761,7 +891,7 @@
         </div>
         <select onchange="updateStepField(${idx}, 'target', this.value)">
           <option value="Z1" ${step.target==='Z1'?'selected':''}>Zona 1 (Recupero Attivo)</option>
-          <option value="Z2" ${step.target==='Z2'?'selected':''}>Zona 2 (Fondo Lento Aerobico)</option>
+          <option value="Z2" ${step.target==='Z2'?'selected':''}>Zona 2 (Fondo Lento)</option>
           <option value="Z3" ${step.target==='Z3'?'selected':''}>Zona 3 (Medio / Tempo)</option>
           <option value="Z4" ${step.target==='Z4'?'selected':''}>Zona 4 (Soglia Anaerobica)</option>
           <option value="Z5" ${step.target==='Z5'?'selected':''}>Zona 5 (VO2max / Massimale)</option>
@@ -832,7 +962,7 @@
   }
 
   // ==========================================
-  // 4. AUTO-SYNC CON GITHUB & GARMIN CONNECT
+  // 5. AUTO-SYNC CON GITHUB & GARMIN CONNECT
   // ==========================================
   async function pushWorkoutsToGitHubAndRunAction() {
     let repo = document.getElementById('ghRepoInput').value.trim();
@@ -840,12 +970,12 @@
     repo = repo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
 
     if (!repo || !token) {
-      alert("Inserisci GitHub Repo (es. username/repo) e il Personal Access Token nelle impostazioni in alto.");
+      alert("Inserisci GitHub Repo (es. christianadamo80-dev/trainingrun) e il Personal Access Token nelle impostazioni.");
       return;
     }
 
     const btn = document.getElementById('btnAutoSyncGarmin');
-    btn.innerText = "⏳ Invio...";
+    btn.innerText = "⏳ Invio a GitHub...";
     btn.disabled = true;
 
     try {
@@ -884,8 +1014,7 @@
         throw new Error(err.message || putRes.statusText);
       }
 
-      // Trigger Workflow Action
-      btn.innerText = "⚡ Avvio Garmin...";
+      btn.innerText = "⚡ Avvio Sync Garmin...";
       const wfListRes = await fetch(`https://api.github.com/repos/${repo}/actions/workflows`, { headers: defaultHeaders });
       if (wfListRes.ok) {
         const wfData = await wfListRes.json();
@@ -910,7 +1039,7 @@
   }
 
   // ==========================================
-  // 5. MODULO IA (GEMINI MULTI-MODELLO)
+  // 6. MODULO IA (GEMINI)
   // ==========================================
   function saveGeminiApiKey() {
     localStorage.setItem('tp_gemini_api_key', document.getElementById('geminiApiKey').value.trim());
@@ -993,7 +1122,7 @@
   }
 
   // ==========================================
-  // 6. GRAFICI, DB & BOOTSTRAP
+  // 7. GRAFICI, DB & BOOTSTRAP
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1103,10 +1232,30 @@
     });
   }
 
+  function dbSaveActivity(act) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(act);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbClearAll() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
   window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
     loadAthletesFromStorage();
-    renderAthleteSelector();
+
+    const savedClientId = localStorage.getItem('tp_google_client_id');
+    if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
 
     const savedGhRepo = localStorage.getItem('tp_gh_repo');
     if (savedGhRepo) document.getElementById('ghRepoInput').value = savedGhRepo;
@@ -1116,6 +1265,21 @@
 
     const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
     if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
+
+    renderAthleteSelector();
+
+    // Carica attività da activities.json se disponibile
+    try {
+      const res = await fetch('activities.json?t=' + Date.now());
+      if (res.ok) {
+        const feed = await res.json();
+        const list = Array.isArray(feed) ? feed : (feed.activities || []);
+        for (let item of list) {
+          if (!item.athleteId) item.athleteId = athletes[0].id;
+          await dbSaveActivity(item);
+        }
+      }
+    } catch(e) {}
 
     allActivities = await dbGetAllActivities();
     filterActivitiesForCurrentAthlete();
