@@ -1,13 +1,17 @@
-name: Sync Garmin & Push Workouts
+name: Garmin Sync and Push Workouts
 
 on:
   schedule:
-    - cron: '0 5 * * *'  # sincronizzazione automatica notturna
-  workflow_dispatch:      # <-- FONDAMENTALE: permette l'avvio immediato dal browser
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,19 +23,19 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install garminconnect
 
-      - name: Run sync script
+      - name: Run Garmin Sync Script
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
         run: |
           python sync_garmin.py
 
-      - name: Commit & push updated activities
+      - name: Commit and push changes
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add activities.json
-          git commit -m "Auto-sync Garmin activities [skip ci]" || echo "Nessuna modifica da salvare"
-          git push
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-sync Garmin data [skip ci]" && git push)
