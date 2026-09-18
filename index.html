@@ -271,8 +271,10 @@
     .act-title { font-weight: 600; font-size: 0.84rem; margin: 1px 0; }
     .act-stats { font-size: 0.75rem; color: var(--muted); }
     .badge-tss { background: rgba(16, 185, 129, 0.15); color: var(--accent-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
-    .btn-del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 2px 6px; }
-    .btn-del:hover { color: var(--danger); }
+    .act-actions { display: flex; align-items: center; gap: 6px; }
+    .btn-row-action { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 0.95rem; padding: 2px 4px; border-radius: 3px; }
+    .btn-row-action:hover { color: #fff; background: #27374d; }
+    .btn-del:hover { color: var(--danger) !important; }
 
     .terrain-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left; margin-top: 6px; }
     .terrain-table th, .terrain-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
@@ -670,7 +672,6 @@
   const STORE_NAME = "activities";
   let db = null;
 
-  // Gestione Profili Atleti
   let athletes = [
     {
       id: "ath_default",
@@ -691,8 +692,8 @@
   ];
   let currentAthleteId = "ath_default";
 
-  let allActivities = []; // Tutte le attività dal DB
-  let activities = [];    // Attività filtrate per l'atleta corrente
+  let allActivities = [];
+  let activities = [];
   let selectedActivityId = null;
 
   let workoutChartInstance = null;
@@ -789,7 +790,6 @@
     const cur = getCurrentAthlete();
     if (!confirm(`Sei sicuro di voler eliminare l'atleta "${cur.name}" e tutte le sue corse associate?`)) return;
 
-    // Elimina tutte le attività di questo atleta
     const toDelete = allActivities.filter(a => a.athleteId === cur.id);
     for (const a of toDelete) {
       await dbDeleteActivity(a.id);
@@ -805,13 +805,16 @@
 
   function switchAthlete(newId) {
     currentAthleteId = newId;
+    selectedActivityId = null; // Reset immediato della sessione attiva
     saveAthletesToStorage();
     renderAthleteSelector();
     filterActivitiesForCurrentAthlete();
   }
 
   function filterActivitiesForCurrentAthlete() {
-    // Se un'attività vecchia non ha athleteId, la assegna a quello di default
+    selectedActivityId = null; // Previene la visualizzazione di vecchie corse
+
+    // Se un'attività non ha athleteId, la assegna al primo atleta disponibile
     allActivities.forEach(a => {
       if (!a.athleteId) a.athleteId = athletes[0].id;
     });
@@ -823,6 +826,37 @@
     renderPMCChart(pmc);
     updateTrainingStatusBanner(pmc, activities);
     checkThresholdUpdates();
+  }
+
+  async function promptReassignAthlete(e, actId) {
+    e.stopPropagation();
+    const act = allActivities.find(a => a.id === actId);
+    if (!act) return;
+
+    const options = athletes.map((a, i) => `${i + 1}. ${a.name}`).join('\n');
+    const choice = prompt(`A quale atleta vuoi assegnare "${act.title}"?\n\n${options}\n\nInserisci il numero corrispondente:`);
+    if (!choice) return;
+
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= athletes.length) {
+      alert("Scelta non valida.");
+      return;
+    }
+
+    const targetAth = athletes[idx];
+    act.athleteId = targetAth.id;
+
+    // Ricalcola con i parametri del nuovo atleta
+    const rFTPaSec = parsePaceToSec(targetAth.rfTPA);
+    const lthrVal = targetAth.lthr;
+    const rFTPaSpeed = 1000 / rFTPaSec;
+    const globalNgpSpeed = 1000 / act.globalNgpSec;
+    act.intensityFactor = globalNgpSpeed / rFTPaSpeed;
+    act.rTSS = Math.round(((act.totalTimeSec * globalNgpSpeed * act.intensityFactor) / (rFTPaSpeed * 3600) * 100) * 10) / 10;
+    recomputeActivityHRZones(act, targetAth.hrConfig);
+
+    await dbSaveActivity(act);
+    filterActivitiesForCurrentAthlete();
   }
 
   // ==========================================
@@ -1692,7 +1726,20 @@ Fornisci un debriefing tecnico strutturato:
   }
 
   function updateTrainingStatusBanner(pmcSeries, acts) {
-    if (!pmcSeries.length) return;
+    const cur = getCurrentAthlete();
+    if (!pmcSeries.length || !acts.length) {
+      document.getElementById('bannerCTL').innerText = "--";
+      document.getElementById('bannerATL').innerText = "--";
+      document.getElementById('bannerTSB').innerText = "--";
+      document.getElementById('bannerRamp').innerText = "--";
+      document.getElementById('bannerKm7d').innerText = "-- km";
+      document.getElementById('bannerTSS7d').innerText = "--";
+      document.getElementById('statusBadge').innerText = "Dati insufficienti";
+      document.getElementById('statusBadge').style.background = "rgba(148, 163, 184, 0.2)";
+      document.getElementById('statusBadge').style.color = "var(--muted)";
+      document.getElementById('statusDesc').innerText = `Carica le sessioni di ${cur.name} per calcolare lo stato di forma.`;
+      return;
+    }
 
     const today = pmcSeries[pmcSeries.length - 1];
     document.getElementById('bannerCTL').innerText = today.ctl;
@@ -1813,6 +1860,21 @@ Fornisci un debriefing tecnico strutturato:
       document.getElementById('valPower').innerText = "--";
       document.getElementById('valNP').innerText = "NP: --";
       document.getElementById('valDecoupling').innerText = "--";
+
+      // Pulisce grafici e tabelle
+      document.getElementById('terrainBreakdownBody').innerHTML = `<tr><td colspan="6" style="color: var(--muted); text-align: center;">Nessun dato per questo atleta</td></tr>`;
+      document.getElementById('meanMaxTableBody').innerHTML = `<tr><td colspan="4" style="color: var(--muted); text-align: center;">Nessun dato</td></tr>`;
+      document.getElementById('paceZonesContainer').innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Nessun dato</p>`;
+      document.getElementById('hrZonesContainer').innerHTML = `<p style="color: var(--muted); font-size: 0.78rem; padding: 10px 0;">Nessun dato</p>`;
+      if (workoutChartInstance) workoutChartInstance.destroy();
+      if (mapPolyline && mapInstance) {
+        mapInstance.removeLayer(mapPolyline);
+        mapPolyline = null;
+      }
+      if (mapCursorMarker && mapInstance) {
+        mapInstance.removeLayer(mapCursorMarker);
+        mapCursorMarker = null;
+      }
       return;
     }
 
@@ -2316,9 +2378,10 @@ Fornisci un debriefing tecnico strutturato:
             <div class="act-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${act.title}</div>
             <div class="act-stats">${act.totalDistKm.toFixed(1)} km | D+ ${act.totalElevationGain}m | ${formatSecToPace(act.avgPaceSec)}</div>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="act-actions">
             <span class="badge-tss">${act.rTSS} TSS</span>
-            <button class="btn-del" title="Elimina corsa" onclick="deleteActivity(event, '${act.id}')">&times;</button>
+            <button class="btn-row-action" title="Sposta ad un altro atleta" onclick="promptReassignAthlete(event, '${act.id}')">🔄</button>
+            <button class="btn-row-action btn-del" title="Elimina corsa" onclick="deleteActivity(event, '${act.id}')">&times;</button>
           </div>
         </div>
       `).join('');
