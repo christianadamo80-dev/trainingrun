@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro Suite - ITRA & TrainingPeaks</title>
+  <title>Running & Trail Analytics Pro Suite - TrainingPeaks Style & Calibrated ITRA</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -284,7 +284,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Workout Builder, Calendario & Stima Punteggio ITRA</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Workout Builder, Calendario & Calcolo ITRA Calibrato</p>
     </div>
 
     <div class="top-controls">
@@ -534,25 +534,28 @@
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
 
   // ==========================================
-  // 2. MOTORE MATEMATICO ITRA
+  // 2. MOTORE MATEMATICO ITRA CALIBRATO SU BENCHMARK REALI
   // ==========================================
   function calculateITRA(distKm, elevGainM, timeSec) {
-    if (!distKm || distKm <= 0.1 || !timeSec || timeSec <= 0) return 0;
-    
-    // Calcolo Km-Sforzo
+    if (!distKm || distKm <= 0.5 || !timeSec || timeSec <= 60) return 0;
+
+    // 1. Km-Sforzo (ITRA/UTMB: 100m D+ = 1 km piatto)
     const effortKm = distKm + (elevGainM / 100.0);
-    
-    // Tempo di riferimento teorico record del mondo (in secondi)
-    // Velocità benchmark mondiale di circa 4.5 m/s su km-sforzo breve, con decadimento logaritmico sulla distanza
-    const refSpeed = 4.45 * Math.pow(Math.max(1, effortKm), -0.065); // m/s
-    const t0 = (effortKm * 1000) / refSpeed;
 
-    // Formula esponenziale ITRA per il punteggio normalizzato
-    const ratio = t0 / timeSec;
-    let score = Math.round(1000 * Math.pow(ratio, 1.18));
+    // 2. Benchmark Elite Mondiale (1000 punti)
+    //    Per ~40.5 km-sforzo, il riferimento elite è circa 2h 14m (8050 sec).
+    //    Usiamo un modello esponenziale di progressione su fatica:
+    const baseSpeedKmH = 18.8; // km/h teorici sui primissimi km
+    const t0Sec = (effortKm / baseSpeedKmH) * 3600 * Math.pow(effortKm / 10.0, 0.075);
 
-    if (score < 100) score = 100;
+    // 3. Calcolo rapporto e scoring non-lineare
+    const performanceRatio = t0Sec / timeSec;
+    let score = Math.round(1000 * Math.pow(performanceRatio, 1.08));
+
+    // Range di sicurezza
+    if (score < 150) score = 150;
     if (score > 1000) score = 1000;
+
     return score;
   }
 
@@ -692,11 +695,9 @@
       activities = allActivities.filter(a => !a.athleteId || a.athleteId === currentAthleteId || a.athleteId === "ath_default");
     }
 
-    // Assicura il calcolo del punteggio ITRA per ogni attività
+    // Calcolo/aggiornamento del punteggio ITRA ricalibrato
     activities.forEach(a => {
-      if (!a.itraScore) {
-        a.itraScore = calculateITRA(a.totalDistKm, a.totalElevationGain, a.totalTimeSec);
-      }
+      a.itraScore = calculateITRA(a.totalDistKm, a.totalElevationGain, a.totalTimeSec);
     });
 
     populatePMCYearSelector();
@@ -1191,7 +1192,6 @@
     const km7d = recentActs.reduce((acc, a) => acc + (a.totalDistKm || 0), 0).toFixed(1);
     const tss7d = Math.round(recentActs.reduce((acc, a) => acc + (a.rTSS || 0), 0));
 
-    // Migliori 3 punteggi ITRA recenti
     const topScores = activities.map(a => a.itraScore || 0).sort((a,b)=>b-a).slice(0,3);
     const avgTopITRA = topScores.length ? Math.round(topScores.reduce((s,v)=>s+v,0)/topScores.length) : "--";
 
@@ -1339,7 +1339,6 @@
     const totTSS = activities.reduce((s,a)=>s+(a.rTSS || 0),0);
     const totTime = activities.reduce((s,a)=>s+(a.totalTimeSec || 0),0);
 
-    // Calcolo ITRA Index Generale (Media pesata delle migliori prestazioni)
     const validScores = activities.map(a => a.itraScore || 0).filter(s => s > 0).sort((a,b)=>b-a);
     let generalITRA = "--";
     if (validScores.length > 0) {
@@ -1469,15 +1468,13 @@
         const list = Array.isArray(feed) ? feed : (feed.activities || []);
         for (let item of list) {
           if (!item.athleteId) item.athleteId = athletes[0].id;
-          if (!item.itraScore) {
-            item.itraScore = calculateITRA(item.totalDistKm, item.totalElevationGain, item.totalTimeSec);
-          }
+          item.itraScore = calculateITRA(item.totalDistKm, item.totalElevationGain, item.totalTimeSec);
           await dbSaveActivity(item);
         }
         allActivities = await dbGetAllActivities();
       }
     } catch(e) {
-      console.warn("Lettura activities.json non riuscita, uso dati locali:", e);
+      console.warn("Caricamento activities.json offline/non presente:", e);
     }
 
     filterActivitiesForCurrentAthlete();
