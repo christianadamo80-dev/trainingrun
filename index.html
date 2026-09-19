@@ -258,7 +258,7 @@
     .card-sub { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
 
     .chart-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
-    .chart-box h2 { font-size: 0.92rem; margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .chart-box h2 { font-size: 0.92rem; margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
     .chart-canvas { height: 260px; width: 100%; }
     .terrain-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left; }
     .terrain-table th, .terrain-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
@@ -272,22 +272,8 @@
     .dropzone p { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
     input[type="file"] { display: none; }
 
-    /* Filtri Temporali Grafico PMC */
-    .pmc-filter-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.78rem;
-    }
-    .pmc-filter-group select {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 3px 6px;
-      border-radius: 4px;
-      font-size: 0.76rem;
-      cursor: pointer;
-    }
+    .pmc-filter-group { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+    .pmc-filter-group select { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 0.76rem; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -517,7 +503,6 @@
   const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
   let tokenClient = null;
   let accessToken = null;
-  let pendingThreshold = null;
 
   const DB_NAME = "TP_Running_Pro_Master_DB";
   const STORE_NAME = "activities";
@@ -528,17 +513,7 @@
       id: "ath_default",
       name: "Atleta 1",
       rfTPA: "04:15",
-      lthr: 168,
-      hrConfig: {
-        mode: "auto",
-        zones: [
-          { name: "Z1 Recupero", min: 0, max: 142, color: "var(--z1)" },
-          { name: "Z2 Fondo Lento", min: 143, max: 151, color: "var(--z2)" },
-          { name: "Z3 Fondo Medio", min: 152, max: 159, color: "var(--z3)" },
-          { name: "Z4 Soglia Anaerobica", min: 160, max: 167, color: "var(--z4)" },
-          { name: "Z5 Sopra Soglia", min: 168, max: 220, color: "var(--z5)" }
-        ]
-      }
+      lthr: 168
     }
   ];
   let currentAthleteId = "ath_default";
@@ -560,7 +535,6 @@
 
   const CTL_DECAY = 1 - Math.exp(-1 / 42);
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
-  const FLAT_COST = 3.6;
 
   function getCurrentAthlete() {
     return athletes.find(a => a.id === currentAthleteId) || athletes[0];
@@ -576,6 +550,7 @@
     }
     const savedCurId = localStorage.getItem('tp_current_athlete_id');
     if (savedCurId && athletes.some(a => a.id === savedCurId)) currentAthleteId = savedCurId;
+    else currentAthleteId = athletes[0].id;
 
     const savedWorkouts = localStorage.getItem('tp_scheduled_workouts');
     if (savedWorkouts) {
@@ -653,10 +628,52 @@
     filterActivitiesForCurrentAthlete();
   }
 
+  function createNewAthlete() {
+    const name = prompt("Inserisci il nome del nuovo atleta:");
+    if (!name || !name.trim()) return;
+
+    const newId = "ath_" + Date.now();
+    athletes.push({ id: newId, name: name.trim(), rfTPA: "04:30", lthr: 165 });
+    currentAthleteId = newId;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function renameCurrentAthlete() {
+    const cur = getCurrentAthlete();
+    const newName = prompt("Rinomina atleta:", cur.name);
+    if (!newName || !newName.trim()) return;
+    cur.name = newName.trim();
+    saveAthletesToStorage();
+    renderAthleteSelector();
+  }
+
+  async function deleteCurrentAthlete() {
+    if (athletes.length <= 1) return alert("Deve essere presente almeno un atleta.");
+    const cur = getCurrentAthlete();
+    if (!confirm(`Sei sicuro di voler eliminare "${cur.name}"?`)) return;
+
+    allActivities = allActivities.filter(a => a.athleteId !== cur.id);
+    athletes = athletes.filter(a => a.id !== cur.id);
+    currentAthleteId = athletes[0].id;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  // RIPRISTINO AUTOMATICO DEI DATI E FILTRO RESILIENTE
   function filterActivitiesForCurrentAthlete() {
     selectedActivityId = null;
-    allActivities.forEach(a => { if (!a.athleteId) a.athleteId = athletes[0].id; });
-    activities = allActivities.filter(a => a.athleteId === currentAthleteId);
+
+    // Se esiste un solo atleta (default), assegna tutte le attività senza athleteId a questo atleta
+    if (athletes.length === 1) {
+      allActivities.forEach(a => { a.athleteId = athletes[0].id; });
+      activities = allActivities.slice();
+    } else {
+      // Se ci sono più atleti, mostra quelle assegnate oppure quelle generiche assegnate all'atleta attivo
+      activities = allActivities.filter(a => !a.athleteId || a.athleteId === currentAthleteId || a.athleteId === "ath_default");
+    }
 
     populatePMCYearSelector();
     showGlobalDashboard();
@@ -727,11 +744,7 @@
 
     try {
       const allActs = await dbGetAllActivities();
-      const payload = {
-        athletes: athletes,
-        activities: allActs,
-        scheduledWorkouts: scheduledWorkouts
-      };
+      const payload = { athletes, activities: allActs, scheduledWorkouts };
       const content = JSON.stringify(payload);
       const fileId = await findDriveFileId();
 
@@ -1177,4 +1190,250 @@
     try {
       alert("L'IA sta elaborando la proposta di allenamento adatta alla tua forma...");
       const reply = await callGemini(prompt);
-      const cleanJson = reply.replace(/```json/g, '').replace(/
+      const cleanJson = reply.replace(/```json/g, '').replace(/```/g, '').trim();
+      const plan = JSON.parse(cleanJson);
+
+      openWorkoutBuilderModal();
+      document.getElementById('wbTitle').value = plan.title || "Workout Proposto da Coach IA";
+      currentWorkoutSteps = plan.steps || [];
+      renderWorkoutStepRows();
+    } catch (e) {
+      alert("Errore generazione IA: " + e.message);
+    }
+  }
+
+  // ==========================================
+  // 7. GRAFICI, CALCOLO PMC E FILTRO MESE/ANNO
+  // ==========================================
+  function computePMC(acts) {
+    if (!acts.length) return [];
+    let tssByDate = {};
+    acts.forEach(a => { tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + (a.rTSS || 0); });
+    const dates = Object.keys(tssByDate).sort();
+    let cur = new Date(dates[0]);
+    cur.setDate(cur.getDate() - 14);
+    let end = new Date();
+    let ctl = 0, atl = 0, pmcSeries = [];
+
+    while (cur <= end) {
+      const dStr = cur.toISOString().split('T')[0];
+      const dayTss = tssByDate[dStr] || 0;
+      ctl += (dayTss - ctl) * CTL_DECAY;
+      atl += (dayTss - atl) * ATL_DECAY;
+      pmcSeries.push({ date: dStr, tss: dayTss, ctl: Math.round(ctl*10)/10, atl: Math.round(atl*10)/10, tsb: Math.round((ctl-atl)*10)/10 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return pmcSeries;
+  }
+
+  function updateTrainingStatusBanner(pmcSeries, acts) {
+    if (!pmcSeries.length) return;
+    const today = pmcSeries[pmcSeries.length - 1];
+    document.getElementById('bannerCTL').innerText = today.ctl;
+    document.getElementById('bannerATL').innerText = today.atl;
+    document.getElementById('bannerTSB').innerText = (today.tsb > 0 ? '+' : '') + today.tsb;
+    document.getElementById('statusBadge').innerText = today.tsb >= -10 && today.tsb <= 20 ? "Forma Ottimale" : (today.tsb < -25 ? "Fatica Elevata" : "Recupero");
+  }
+
+  function renderPMCChart(pmcData) {
+    const ctx = document.getElementById('pmcChart').getContext('2d');
+    if (pmcChartInstance) pmcChartInstance.destroy();
+    if (!pmcData.length) return;
+
+    const selectedYear = document.getElementById('pmcYearSelect')?.value || 'all';
+    const selectedMonth = document.getElementById('pmcMonthSelect')?.value || 'all';
+
+    let filteredPMC = pmcData;
+
+    if (selectedYear !== 'all') {
+      filteredPMC = filteredPMC.filter(d => d.date.startsWith(selectedYear));
+    }
+
+    if (selectedMonth !== 'all') {
+      filteredPMC = filteredPMC.filter(d => {
+        const parts = d.date.split('-');
+        return parts.length >= 2 && parts[1] === selectedMonth;
+      });
+    }
+
+    if (!filteredPMC.length) {
+      filteredPMC = pmcData.slice(-30);
+    }
+
+    pmcChartInstance = new Chart(ctx, {
+      data: {
+        labels: filteredPMC.map(d => d.date),
+        datasets: [
+          { type: 'line', label: 'CTL (Fitness)', data: filteredPMC.map(d => d.ctl), borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0 },
+          { type: 'line', label: 'ATL (Fatica)', data: filteredPMC.map(d => d.atl), borderColor: '#f87171', borderWidth: 1.8, pointRadius: 0 },
+          { type: 'line', label: 'TSB (Forma)', data: filteredPMC.map(d => d.tsb), borderColor: '#fbbf24', fill: true, backgroundColor: 'rgba(251, 191, 36, 0.08)', pointRadius: 0 },
+          { type: 'bar', label: 'TSS', data: filteredPMC.map(d => d.tss), backgroundColor: 'rgba(16, 185, 129, 0.45)', yAxisID: 'yTSS' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: '#1a2333' } },
+          y: { grid: { color: '#243247' } },
+          yTSS: { position: 'right', display: false }
+        }
+      }
+    });
+  }
+
+  function showGlobalDashboard() {
+    selectedActivityId = null;
+    document.getElementById('actCount').innerText = activities.length;
+    const listEl = document.getElementById('activityList');
+
+    if (!activities.length) {
+      listEl.innerHTML = `<p style="padding:14px; color:var(--muted); font-size:0.8rem;">Nessuna attività</p>`;
+      return;
+    }
+
+    listEl.innerHTML = activities.slice().sort((a,b)=>b.startTime-a.startTime).map(act => `
+      <div class="activity-row ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
+        <div>
+          <div class="act-date">${act.dateStr}</div>
+          <div class="act-title">${act.title}</div>
+          <div class="act-stats">${(act.totalDistKm || 0).toFixed(1)} km | D+ ${act.totalElevationGain || 0}m</div>
+        </div>
+        <span class="badge-tss">${act.rTSS || 0} TSS</span>
+      </div>
+    `).join('');
+
+    const totDist = activities.reduce((s,a)=>s+(a.totalDistKm || 0),0);
+    const totDPlus = activities.reduce((s,a)=>s+(a.totalElevationGain || 0),0);
+    const totTSS = activities.reduce((s,a)=>s+(a.rTSS || 0),0);
+    const totTime = activities.reduce((s,a)=>s+(a.totalTimeSec || 0),0);
+
+    const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${totDist.toFixed(1)} km`;
+    const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${totDPlus}m`;
+    const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${Math.round(totDist + (totDPlus/100))} km`;
+    const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(totTime);
+    const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${totDist > 0 ? formatSecToPace(totTime / totDist) : '--'}`;
+    const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = activities.length;
+    const elIF = document.getElementById('valIF'); if (elIF) elIF.innerText = `Uscite totali`;
+    const elTSS = document.getElementById('valTSS'); if (elTSS) elTSS.innerText = Math.round(totTSS);
+  }
+
+  function selectActivity(id) {
+    selectedActivityId = id;
+    const act = activities.find(a => a.id === id);
+    if (!act) return;
+
+    showGlobalDashboard();
+    selectedActivityId = id;
+
+    const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${(act.totalDistKm || 0).toFixed(2)} km`;
+    const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${act.totalElevationGain || 0}m`;
+    const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${act.kmEffort || ((act.totalDistKm || 0) + ((act.totalElevationGain || 0)/100)).toFixed(1)} km`;
+    const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(act.totalTimeSec || 0);
+    const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
+    const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = formatSecToPace(act.globalNgpSec || act.avgPaceSec);
+    const elIF = document.getElementById('valIF'); if (elIF) elIF.innerText = `IF: ${(act.intensityFactor || 0.85).toFixed(2)}`;
+    const elTSS = document.getElementById('valTSS'); if (elTSS) elTSS.innerText = `${act.rTSS || 0} TSS`;
+
+    if (act.points && act.points.length > 0) {
+      if (typeof renderWorkoutChart === 'function') renderWorkoutChart(act);
+      if (typeof initOrUpdateMap === 'function') initOrUpdateMap(act);
+    }
+  }
+
+  function formatSecToPace(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return "--:--";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
+  }
+
+  function formatDuration(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return "--";
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    return `${m}m ${s}s`;
+  }
+
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
+      };
+      request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      request.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbGetAllActivities() {
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+    });
+  }
+
+  function dbSaveActivity(act) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(act);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  function dbClearAll() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  function openHRModal() {
+    alert("Configurazione zone LTHR attiva nelle preferenze atleta.");
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    await initDB();
+    loadAthletesFromStorage();
+
+    const savedClientId = localStorage.getItem('tp_google_client_id');
+    if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
+
+    const savedGhRepo = localStorage.getItem('tp_gh_repo');
+    if (savedGhRepo) document.getElementById('ghRepoInput').value = savedGhRepo;
+
+    const savedGhToken = localStorage.getItem('tp_gh_token');
+    if (savedGhToken) document.getElementById('ghTokenInput').value = savedGhToken;
+
+    const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
+    if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
+
+    renderAthleteSelector();
+
+    // Rilettura sincrona e salvataggio
+    try {
+      const res = await fetch('activities.json?t=' + Date.now());
+      if (res.ok) {
+        const feed = await res.json();
+        const list = Array.isArray(feed) ? feed : (feed.activities || []);
+        for (let item of list) {
+          if (!item.athleteId) item.athleteId = athletes[0].id;
+          await dbSaveActivity(item);
+        }
+      }
+    } catch(e) {}
+
+    allActivities = await dbGetAllActivities();
+    filterActivitiesForCurrentAthlete();
+  });
+</script>
+
+</body>
+</html>
