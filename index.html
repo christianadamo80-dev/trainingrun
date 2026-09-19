@@ -559,7 +559,7 @@
 
   function saveDriveClientId() {
     localStorage.setItem('tp_google_client_id', document.getElementById('clientIdInput').value.trim());
-    tokenClient = null; // Forza la re-inizializzazione col nuovo ID
+    tokenClient = null;
   }
 
   function renderAthleteSelector() {
@@ -576,6 +576,64 @@
     document.getElementById('pmcAthleteTitle').innerText = cur.name;
 
     renderCalendar();
+  }
+
+  function createNewAthlete() {
+    const name = prompt("Inserisci il nome del nuovo atleta:");
+    if (!name || !name.trim()) return;
+
+    const newId = "ath_" + Date.now();
+    const newAth = {
+      id: newId,
+      name: name.trim(),
+      rfTPA: "04:30",
+      lthr: 165,
+      hrConfig: {
+        mode: "auto",
+        zones: [
+          { name: "Z1 Recupero", min: 0, max: 140, color: "var(--z1)" },
+          { name: "Z2 Fondo Lento", min: 141, max: 148, color: "var(--z2)" },
+          { name: "Z3 Fondo Medio", min: 149, max: 156, color: "var(--z3)" },
+          { name: "Z4 Soglia Anaerobica", min: 157, max: 164, color: "var(--z4)" },
+          { name: "Z5 Sopra Soglia", min: 165, max: 220, color: "var(--z5)" }
+        ]
+      }
+    };
+    athletes.push(newAth);
+    currentAthleteId = newId;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function renameCurrentAthlete() {
+    const cur = getCurrentAthlete();
+    const newName = prompt("Rinomina atleta:", cur.name);
+    if (!newName || !newName.trim()) return;
+    cur.name = newName.trim();
+    saveAthletesToStorage();
+    renderAthleteSelector();
+  }
+
+  async function deleteCurrentAthlete() {
+    if (athletes.length <= 1) {
+      alert("Deve essere presente almeno un atleta.");
+      return;
+    }
+    const cur = getCurrentAthlete();
+    if (!confirm(`Sei sicuro di voler eliminare l'atleta "${cur.name}" e tutte le sue corse associate?`)) return;
+
+    const toDelete = allActivities.filter(a => a.athleteId === cur.id);
+    for (const a of toDelete) {
+      await dbDeleteActivity(a.id);
+    }
+    allActivities = allActivities.filter(a => a.athleteId !== cur.id);
+
+    athletes = athletes.filter(a => a.id !== cur.id);
+    currentAthleteId = athletes[0].id;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
   }
 
   function switchAthlete(newId) {
@@ -1083,8 +1141,8 @@
 
     const today = pmc[pmc.length - 1];
     const recentActs = activities.filter(a => (Date.now() - a.startTime) <= 7 * 24 * 3600 * 1000);
-    const km7d = recentActs.reduce((acc, a) => acc + a.totalDistKm, 0).toFixed(1);
-    const tss7d = Math.round(recentActs.reduce((acc, a) => acc + a.rTSS, 0));
+    const km7d = recentActs.reduce((acc, a) => acc + (a.totalDistKm || 0), 0).toFixed(1);
+    const tss7d = Math.round(recentActs.reduce((acc, a) => acc + (a.rTSS || 0), 0));
 
     const box = document.getElementById('aiStatusBox');
     const content = document.getElementById('aiStatusContent');
@@ -1122,12 +1180,12 @@
   }
 
   // ==========================================
-  // 7. GRAFICI, DB & BOOTSTRAP
+  // 7. GRAFICI, DB & SELEZIONE ATTIVITÀ
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
     let tssByDate = {};
-    acts.forEach(a => { tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + a.rTSS; });
+    acts.forEach(a => { tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + (a.rTSS || 0); });
     const dates = Object.keys(tssByDate).sort();
     let cur = new Date(dates[0]);
     cur.setDate(cur.getDate() - 14);
@@ -1192,24 +1250,68 @@
     }
 
     listEl.innerHTML = activities.slice().sort((a,b)=>b.startTime-a.startTime).map(act => `
-      <div class="activity-row">
+      <div class="activity-row ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
         <div>
           <div class="act-date">${act.dateStr}</div>
           <div class="act-title">${act.title}</div>
-          <div class="act-stats">${act.totalDistKm.toFixed(1)} km | D+ ${act.totalElevationGain}m</div>
+          <div class="act-stats">${(act.totalDistKm || 0).toFixed(1)} km | D+ ${act.totalElevationGain || 0}m</div>
         </div>
-        <span class="badge-tss">${act.rTSS} TSS</span>
+        <span class="badge-tss">${act.rTSS || 0} TSS</span>
       </div>
     `).join('');
 
-    const totDist = activities.reduce((s,a)=>s+a.totalDistKm,0);
-    const totDPlus = activities.reduce((s,a)=>s+a.totalElevationGain,0);
-    const totTSS = activities.reduce((s,a)=>s+a.rTSS,0);
+    const totDist = activities.reduce((s,a)=>s+(a.totalDistKm || 0),0);
+    const totDPlus = activities.reduce((s,a)=>s+(a.totalElevationGain || 0),0);
+    const totTSS = activities.reduce((s,a)=>s+(a.rTSS || 0),0);
+    const totTime = activities.reduce((s,a)=>s+(a.totalTimeSec || 0),0);
 
-    document.getElementById('valDist').innerText = `${totDist.toFixed(1)} km`;
-    document.getElementById('valElevation').innerText = `D+ ${totDPlus}m`;
-    document.getElementById('valKmEffort').innerText = `${Math.round(totDist + (totDPlus/100))} km`;
-    document.getElementById('valTSS').innerText = Math.round(totTSS);
+    const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${totDist.toFixed(1)} km`;
+    const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${totDPlus}m`;
+    const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${Math.round(totDist + (totDPlus/100))} km`;
+    const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(totTime);
+    const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${totDist > 0 ? formatSecToPace(totTime / totDist) : '--'}`;
+    const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = activities.length;
+    const elIF = document.getElementById('valIF'); if (elIF) elIF.innerText = `Uscite totali`;
+    const elTSS = document.getElementById('valTSS'); if (elTSS) elTSS.innerText = Math.round(totTSS);
+  }
+
+  function selectActivity(id) {
+    selectedActivityId = id;
+    const act = activities.find(a => a.id === id);
+    if (!act) return;
+
+    showGlobalDashboard();
+    selectedActivityId = id;
+
+    const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${(act.totalDistKm || 0).toFixed(2)} km`;
+    const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${act.totalElevationGain || 0}m`;
+    const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${act.kmEffort || ((act.totalDistKm || 0) + ((act.totalElevationGain || 0)/100)).toFixed(1)} km`;
+    const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(act.totalTimeSec || 0);
+    const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
+    const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = formatSecToPace(act.globalNgpSec || act.avgPaceSec);
+    const elIF = document.getElementById('valIF'); if (elIF) elIF.innerText = `IF: ${(act.intensityFactor || 0.85).toFixed(2)}`;
+    const elTSS = document.getElementById('valTSS'); if (elTSS) elTSS.innerText = `${act.rTSS || 0} TSS`;
+
+    if (act.points && act.points.length > 0) {
+      if (typeof renderWorkoutChart === 'function') renderWorkoutChart(act);
+      if (typeof initOrUpdateMap === 'function') initOrUpdateMap(act);
+    }
+  }
+
+  function formatSecToPace(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return "--:--";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
+  }
+
+  function formatDuration(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return "--";
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    return `${m}m ${s}s`;
   }
 
   function initDB() {
@@ -1250,6 +1352,10 @@
     });
   }
 
+  function openHRModal() {
+    alert("Configurazione zone LTHR attiva nelle preferenze atleta.");
+  }
+
   window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
     loadAthletesFromStorage();
@@ -1268,7 +1374,6 @@
 
     renderAthleteSelector();
 
-    // Carica attività da activities.json se disponibile
     try {
       const res = await fetch('activities.json?t=' + Date.now());
       if (res.ok) {
