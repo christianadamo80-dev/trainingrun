@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro Suite - TrainingPeaks Style</title>
+  <title>Running & Trail Analytics Pro Suite - ITRA & TrainingPeaks</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -35,6 +35,7 @@
       --accent-tsb: #fbbf24;
       --accent-primary: #10b981;
       --accent-purple: #c084fc;
+      --accent-itra: #f59e0b;
       --danger: #ef4444;
       --z1: #94a3b8; --z2: #38bdf8; --z3: #10b981; --z4: #f59e0b; --z5: #ef4444;
     }
@@ -250,6 +251,7 @@
     .act-title { font-weight: 600; font-size: 0.84rem; margin: 1px 0; }
     .act-stats { font-size: 0.75rem; color: var(--muted); }
     .badge-tss { background: rgba(16, 185, 129, 0.15); color: var(--accent-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+    .badge-itra { background: rgba(245, 158, 11, 0.18); color: var(--accent-itra); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
 
     .grid-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
@@ -282,7 +284,7 @@
   <header>
     <div>
       <h1>Running & Trail Analytics Pro</h1>
-      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Workout Builder & Calendario Stile TrainingPeaks</p>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Workout Builder, Calendario & Stima Punteggio ITRA</p>
     </div>
 
     <div class="top-controls">
@@ -475,6 +477,7 @@
       <div class="grid-metrics">
         <div class="card"><div class="card-title">Distanza & D+</div><div class="card-val" id="valDist">--</div><div class="card-sub" id="valElevation">D+ -- m</div></div>
         <div class="card"><div class="card-title">Km-Sforzo</div><div class="card-val" id="valKmEffort" style="color: var(--accent-purple);">--</div><div class="card-sub">Dist + (D+/100)</div></div>
+        <div class="card"><div class="card-title">Punteggio ITRA Stimato</div><div class="card-val" id="valITRA" style="color: var(--accent-itra);">--</div><div class="card-sub" id="subITRA">Performance Index</div></div>
         <div class="card"><div class="card-title">Tempo Totale</div><div class="card-val" id="valTime">--</div><div class="card-sub" id="valPace">Passo: --</div></div>
         <div class="card"><div class="card-title">NGP & IF</div><div class="card-val" id="valNGP" style="color: var(--accent-ctl);">--</div><div class="card-sub" id="valIF">IF: --</div></div>
         <div class="card"><div class="card-title">TSS Totale</div><div class="card-val" id="valTSS" style="color: var(--accent-primary);">--</div><div class="card-sub">Training Stress</div></div>
@@ -509,12 +512,7 @@
   let db = null;
 
   let athletes = [
-    {
-      id: "ath_default",
-      name: "Atleta 1",
-      rfTPA: "04:15",
-      lthr: 168
-    }
+    { id: "ath_default", name: "Atleta 1", rfTPA: "04:15", lthr: 168 }
   ];
   let currentAthleteId = "ath_default";
 
@@ -523,7 +521,6 @@
   let selectedActivityId = null;
   let scheduledWorkouts = [];
 
-  // Calendario
   let calendarCurrentDate = new Date();
   let calendarViewMode = 'month';
 
@@ -535,6 +532,29 @@
 
   const CTL_DECAY = 1 - Math.exp(-1 / 42);
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
+
+  // ==========================================
+  // 2. MOTORE MATEMATICO ITRA
+  // ==========================================
+  function calculateITRA(distKm, elevGainM, timeSec) {
+    if (!distKm || distKm <= 0.1 || !timeSec || timeSec <= 0) return 0;
+    
+    // Calcolo Km-Sforzo
+    const effortKm = distKm + (elevGainM / 100.0);
+    
+    // Tempo di riferimento teorico record del mondo (in secondi)
+    // Velocità benchmark mondiale di circa 4.5 m/s su km-sforzo breve, con decadimento logaritmico sulla distanza
+    const refSpeed = 4.45 * Math.pow(Math.max(1, effortKm), -0.065); // m/s
+    const t0 = (effortKm * 1000) / refSpeed;
+
+    // Formula esponenziale ITRA per il punteggio normalizzato
+    const ratio = t0 / timeSec;
+    let score = Math.round(1000 * Math.pow(ratio, 1.18));
+
+    if (score < 100) score = 100;
+    if (score > 1000) score = 1000;
+    return score;
+  }
 
   function getCurrentAthlete() {
     return athletes.find(a => a.id === currentAthleteId) || athletes[0];
@@ -662,7 +682,6 @@
     filterActivitiesForCurrentAthlete();
   }
 
-  // RIPRISTINO AUTOMATICO DEI DATI E FILTRO RESILIENTE
   function filterActivitiesForCurrentAthlete() {
     selectedActivityId = null;
 
@@ -673,6 +692,13 @@
       activities = allActivities.filter(a => !a.athleteId || a.athleteId === currentAthleteId || a.athleteId === "ath_default");
     }
 
+    // Assicura il calcolo del punteggio ITRA per ogni attività
+    activities.forEach(a => {
+      if (!a.itraScore) {
+        a.itraScore = calculateITRA(a.totalDistKm, a.totalElevationGain, a.totalTimeSec);
+      }
+    });
+
     populatePMCYearSelector();
     showGlobalDashboard();
     const pmc = computePMC(activities);
@@ -682,7 +708,7 @@
   }
 
   // ==========================================
-  // 2. GOOGLE DRIVE OAUTH2
+  // 3. GOOGLE DRIVE OAUTH2
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim() || localStorage.getItem('tp_google_client_id');
@@ -821,7 +847,7 @@
   }
 
   // ==========================================
-  // 3. CALENDARIO SETTIMANALE & MENSILE
+  // 4. CALENDARIO SETTIMANALE & MENSILE
   // ==========================================
   function setCalendarView(mode) {
     calendarViewMode = mode;
@@ -908,7 +934,7 @@
         contentHTML += `
           <div class="cal-item completed" title="${act.title}">
             <span>🏃 ${(act.totalDistKm || 0).toFixed(1)}k</span>
-            <span>${act.rTSS || 0}</span>
+            <span>${act.itraScore ? '⚡' + act.itraScore : act.rTSS + 'TSS'}</span>
           </div>
         `;
       });
@@ -928,7 +954,7 @@
   }
 
   // ==========================================
-  // 4. WORKOUT BUILDER
+  // 5. WORKOUT BUILDER
   // ==========================================
   let currentWorkoutSteps = [];
 
@@ -1041,7 +1067,7 @@
   }
 
   // ==========================================
-  // 5. AUTO-SYNC GITHUB & GARMIN
+  // 6. AUTO-SYNC GITHUB & GARMIN
   // ==========================================
   async function pushWorkoutsToGitHubAndRunAction() {
     let repo = document.getElementById('ghRepoInput').value.trim();
@@ -1118,7 +1144,7 @@
   }
 
   // ==========================================
-  // 6. MODULO IA (GEMINI)
+  // 7. MODULO IA (GEMINI)
   // ==========================================
   function saveGeminiApiKey() {
     localStorage.setItem('tp_gemini_api_key', document.getElementById('geminiApiKey').value.trim());
@@ -1165,13 +1191,17 @@
     const km7d = recentActs.reduce((acc, a) => acc + (a.totalDistKm || 0), 0).toFixed(1);
     const tss7d = Math.round(recentActs.reduce((acc, a) => acc + (a.rTSS || 0), 0));
 
+    // Migliori 3 punteggi ITRA recenti
+    const topScores = activities.map(a => a.itraScore || 0).sort((a,b)=>b-a).slice(0,3);
+    const avgTopITRA = topScores.length ? Math.round(topScores.reduce((s,v)=>s+v,0)/topScores.length) : "--";
+
     const box = document.getElementById('aiStatusBox');
     const content = document.getElementById('aiStatusContent');
     document.getElementById('aiStatusTitle').innerText = `🤖 Valutazione Coach IA - ${cur.name}`;
     box.style.display = 'block';
     content.innerHTML = "<p>Interrogazione modello in corso...</p>";
 
-    const prompt = `Coach Joe Friel TrainingPeaks. Atleta: ${cur.name}. rFTPa ${cur.rfTPA}/km, LTHR ${cur.lthr} bpm. CTL ${today.ctl}, ATL ${today.atl}, TSB ${today.tsb}, Km 7gg ${km7d}, TSS 7gg ${tss7d}. Analizza stato e consigli per i prossimi 2 giorni.`;
+    const prompt = `Coach Trail Running. Atleta: ${cur.name}. rFTPa ${cur.rfTPA}/km, LTHR ${cur.lthr} bpm, Indice ITRA stimato: ${avgTopITRA}. CTL ${today.ctl}, ATL ${today.atl}, TSB ${today.tsb}, Km 7gg ${km7d}, TSS 7gg ${tss7d}. Fornisci analisi approfondita sullo stato di forma, livello ITRA e consigli per le prossime uscite.`;
     try {
       content.innerHTML = await callGemini(prompt);
     } catch (e) {
@@ -1201,7 +1231,7 @@
   }
 
   // ==========================================
-  // 7. GRAFICI, CALCOLO PMC E FILTRO MESE/ANNO
+  // 8. GRAFICI, CALCOLO PMC E FILTRO MESE/ANNO
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1297,7 +1327,10 @@
           <div class="act-title">${act.title}</div>
           <div class="act-stats">${(act.totalDistKm || 0).toFixed(1)} km | D+ ${act.totalElevationGain || 0}m</div>
         </div>
-        <span class="badge-tss">${act.rTSS || 0} TSS</span>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+          <span class="badge-tss">${act.rTSS || 0} TSS</span>
+          ${act.itraScore ? `<span class="badge-itra">ITRA ${act.itraScore}</span>` : ''}
+        </div>
       </div>
     `).join('');
 
@@ -1306,9 +1339,19 @@
     const totTSS = activities.reduce((s,a)=>s+(a.rTSS || 0),0);
     const totTime = activities.reduce((s,a)=>s+(a.totalTimeSec || 0),0);
 
+    // Calcolo ITRA Index Generale (Media pesata delle migliori prestazioni)
+    const validScores = activities.map(a => a.itraScore || 0).filter(s => s > 0).sort((a,b)=>b-a);
+    let generalITRA = "--";
+    if (validScores.length > 0) {
+      const topN = validScores.slice(0, Math.min(5, validScores.length));
+      generalITRA = Math.round(topN.reduce((s,v)=>s+v,0) / topN.length);
+    }
+
     const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${totDist.toFixed(1)} km`;
     const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${totDPlus}m`;
     const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${Math.round(totDist + (totDPlus/100))} km`;
+    const elITRA = document.getElementById('valITRA'); if (elITRA) elITRA.innerText = generalITRA;
+    const elSubITRA = document.getElementById('subITRA'); if (elSubITRA) elSubITRA.innerText = `Media Top ${Math.min(5, validScores.length)} Corse`;
     const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(totTime);
     const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${totDist > 0 ? formatSecToPace(totTime / totDist) : '--'}`;
     const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = activities.length;
@@ -1327,6 +1370,8 @@
     const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${(act.totalDistKm || 0).toFixed(2)} km`;
     const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${act.totalElevationGain || 0}m`;
     const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${act.kmEffort || ((act.totalDistKm || 0) + ((act.totalElevationGain || 0)/100)).toFixed(1)} km`;
+    const elITRA = document.getElementById('valITRA'); if (elITRA) elITRA.innerText = act.itraScore || calculateITRA(act.totalDistKm, act.totalElevationGain, act.totalTimeSec);
+    const elSubITRA = document.getElementById('subITRA'); if (elSubITRA) elSubITRA.innerText = `Performance Sessione`;
     const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(act.totalTimeSec || 0);
     const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
     const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = formatSecToPace(act.globalNgpSec || act.avgPaceSec);
@@ -1415,10 +1460,8 @@
 
     renderAthleteSelector();
 
-    // 1. Carica i dati locali già presenti
     allActivities = await dbGetAllActivities();
 
-    // 2. Tenta di aggiornare con activities.json attendendo la fine delle scritture
     try {
       const res = await fetch('activities.json?t=' + Date.now());
       if (res.ok) {
@@ -1426,15 +1469,17 @@
         const list = Array.isArray(feed) ? feed : (feed.activities || []);
         for (let item of list) {
           if (!item.athleteId) item.athleteId = athletes[0].id;
+          if (!item.itraScore) {
+            item.itraScore = calculateITRA(item.totalDistKm, item.totalElevationGain, item.totalTimeSec);
+          }
           await dbSaveActivity(item);
         }
         allActivities = await dbGetAllActivities();
       }
     } catch(e) {
-      console.warn("Lettura activities.json non riuscita, uso dati memorizzati:", e);
+      console.warn("Lettura activities.json non riuscita, uso dati locali:", e);
     }
 
-    // 3. Applica il filtro e disegna l'intera dashboard
     filterActivitiesForCurrentAthlete();
   });
 </script>
