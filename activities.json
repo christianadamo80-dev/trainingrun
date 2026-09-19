@@ -1,5 +1,25 @@
 [
   {
+    "id": "garmin_24416217920",
+    "athleteId": "ath_default",
+    "title": "Vicenza Corsa",
+    "startTime": 1789809977000,
+    "dateStr": "2026-09-19",
+    "totalDistKm": 11.4,
+    "totalElevationGain": 243,
+    "totalElevationLoss": 0,
+    "totalTimeSec": 4006,
+    "avgPaceSec": 351,
+    "globalNgpSec": 351,
+    "intensityFactor": 0.85,
+    "rTSS": 67,
+    "kmEffort": 13.8,
+    "vam": 0,
+    "avgHR": 138,
+    "maxHR": 164,
+    "points": []
+  },
+  {
     "id": "garmin_24397081473",
     "athleteId": "ath_default",
     "title": "Vicenza - (ER) Regeneration Run 1:00 h",
