@@ -271,6 +271,23 @@
     .dropzone:hover { border-color: var(--accent-primary); }
     .dropzone p { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
     input[type="file"] { display: none; }
+
+    /* Filtri Temporali Grafico PMC */
+    .pmc-filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+    .pmc-filter-group select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.76rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -422,9 +439,32 @@
     </div>
   </div>
 
-  <!-- PMC Chart -->
+  <!-- PMC Chart con Filtri Mese / Anno -->
   <div class="chart-box">
-    <h2>Performance Management Chart (CTL / ATL / TSB) - <span id="pmcAthleteTitle">Atleta</span></h2>
+    <h2>
+      <span>Performance Management Chart (CTL / ATL / TSB) - <span id="pmcAthleteTitle">Atleta</span></span>
+      <div class="pmc-filter-group">
+        <label for="pmcYearSelect" style="color: var(--muted); font-size: 0.76rem;">Periodo:</label>
+        <select id="pmcYearSelect" onchange="onPMCFilterChange()">
+          <option value="all">Tutti gli anni</option>
+        </select>
+        <select id="pmcMonthSelect" onchange="onPMCFilterChange()">
+          <option value="all">Tutto l'anno</option>
+          <option value="01">Gennaio</option>
+          <option value="02">Febbraio</option>
+          <option value="03">Marzo</option>
+          <option value="04">Aprile</option>
+          <option value="05">Maggio</option>
+          <option value="06">Giugno</option>
+          <option value="07">Luglio</option>
+          <option value="08">Agosto</option>
+          <option value="09">Settembre</option>
+          <option value="10">Ottobre</option>
+          <option value="11">Novembre</option>
+          <option value="12">Dicembre</option>
+        </select>
+      </div>
+    </h2>
     <div class="chart-canvas"><canvas id="pmcChart"></canvas></div>
   </div>
 
@@ -562,6 +602,33 @@
     tokenClient = null;
   }
 
+  function populatePMCYearSelector() {
+    const yearSelect = document.getElementById('pmcYearSelect');
+    if (!yearSelect) return;
+    const currentSelected = yearSelect.value;
+
+    const years = new Set();
+    activities.forEach(a => {
+      if (a.dateStr) {
+        const y = a.dateStr.substring(0, 4);
+        if (y) years.add(y);
+      }
+    });
+
+    const sortedYears = Array.from(years).sort().reverse();
+    let html = '<option value="all">Tutti gli anni</option>';
+    sortedYears.forEach(y => {
+      html += `<option value="${y}" ${currentSelected === y ? 'selected' : ''}>${y}</option>`;
+    });
+    yearSelect.innerHTML = html;
+  }
+
+  function onPMCFilterChange() {
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+  }
+
   function renderAthleteSelector() {
     const sel = document.getElementById('athleteSelect');
     sel.innerHTML = athletes.map(a => `
@@ -578,64 +645,6 @@
     renderCalendar();
   }
 
-  function createNewAthlete() {
-    const name = prompt("Inserisci il nome del nuovo atleta:");
-    if (!name || !name.trim()) return;
-
-    const newId = "ath_" + Date.now();
-    const newAth = {
-      id: newId,
-      name: name.trim(),
-      rfTPA: "04:30",
-      lthr: 165,
-      hrConfig: {
-        mode: "auto",
-        zones: [
-          { name: "Z1 Recupero", min: 0, max: 140, color: "var(--z1)" },
-          { name: "Z2 Fondo Lento", min: 141, max: 148, color: "var(--z2)" },
-          { name: "Z3 Fondo Medio", min: 149, max: 156, color: "var(--z3)" },
-          { name: "Z4 Soglia Anaerobica", min: 157, max: 164, color: "var(--z4)" },
-          { name: "Z5 Sopra Soglia", min: 165, max: 220, color: "var(--z5)" }
-        ]
-      }
-    };
-    athletes.push(newAth);
-    currentAthleteId = newId;
-    saveAthletesToStorage();
-    renderAthleteSelector();
-    filterActivitiesForCurrentAthlete();
-  }
-
-  function renameCurrentAthlete() {
-    const cur = getCurrentAthlete();
-    const newName = prompt("Rinomina atleta:", cur.name);
-    if (!newName || !newName.trim()) return;
-    cur.name = newName.trim();
-    saveAthletesToStorage();
-    renderAthleteSelector();
-  }
-
-  async function deleteCurrentAthlete() {
-    if (athletes.length <= 1) {
-      alert("Deve essere presente almeno un atleta.");
-      return;
-    }
-    const cur = getCurrentAthlete();
-    if (!confirm(`Sei sicuro di voler eliminare l'atleta "${cur.name}" e tutte le sue corse associate?`)) return;
-
-    const toDelete = allActivities.filter(a => a.athleteId === cur.id);
-    for (const a of toDelete) {
-      await dbDeleteActivity(a.id);
-    }
-    allActivities = allActivities.filter(a => a.athleteId !== cur.id);
-
-    athletes = athletes.filter(a => a.id !== cur.id);
-    currentAthleteId = athletes[0].id;
-    saveAthletesToStorage();
-    renderAthleteSelector();
-    filterActivitiesForCurrentAthlete();
-  }
-
   function switchAthlete(newId) {
     currentAthleteId = newId;
     selectedActivityId = null;
@@ -649,6 +658,7 @@
     allActivities.forEach(a => { if (!a.athleteId) a.athleteId = athletes[0].id; });
     activities = allActivities.filter(a => a.athleteId === currentAthleteId);
 
+    populatePMCYearSelector();
     showGlobalDashboard();
     const pmc = computePMC(activities);
     renderPMCChart(pmc);
@@ -657,18 +667,18 @@
   }
 
   // ==========================================
-  // 2. GOOGLE DRIVE OAUTH2 INTELLIGENTE
+  // 2. GOOGLE DRIVE OAUTH2
   // ==========================================
   function initGoogleOAuth() {
     const clientId = document.getElementById('clientIdInput').value.trim() || localStorage.getItem('tp_google_client_id');
     if (!clientId) {
-      alert("Inserisci il tuo Google Drive Client ID nelle impostazioni in alto per connetterti.");
+      alert("Inserisci il tuo Google Drive Client ID nelle impostazioni in alto.");
       return false;
     }
     localStorage.setItem('tp_google_client_id', clientId);
 
     if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-      alert("Libreria Google Identity non ancora caricata. Verifica la connessione a internet o riprova tra pochi istanti.");
+      alert("Libreria Google Identity non ancora caricata. Riprova tra poco.");
       return false;
     }
 
@@ -879,15 +889,15 @@
       let contentHTML = `
         <div class="cal-cell-head">
           <span>${item.date.getDate()}</span>
-          ${completedActs.length ? `<span style="color:var(--accent-primary); font-size:0.68rem;">${Math.round(completedActs.reduce((s,a)=>s+a.rTSS,0))} TSS</span>` : ''}
+          ${completedActs.length ? `<span style="color:var(--accent-primary); font-size:0.68rem;">${Math.round(completedActs.reduce((s,a)=>s+(a.rTSS||0),0))} TSS</span>` : ''}
         </div>
       `;
 
       completedActs.forEach(act => {
         contentHTML += `
           <div class="cal-item completed" title="${act.title}">
-            <span>🏃 ${(act.totalDistKm).toFixed(1)}k</span>
-            <span>${act.rTSS}</span>
+            <span>🏃 ${(act.totalDistKm || 0).toFixed(1)}k</span>
+            <span>${act.rTSS || 0}</span>
           </div>
         `;
       });
@@ -907,7 +917,7 @@
   }
 
   // ==========================================
-  // 4. WORKOUT BUILDER MODAL
+  // 4. WORKOUT BUILDER
   // ==========================================
   let currentWorkoutSteps = [];
 
@@ -1020,7 +1030,7 @@
   }
 
   // ==========================================
-  // 5. AUTO-SYNC CON GITHUB & GARMIN CONNECT
+  // 5. AUTO-SYNC GITHUB & GARMIN
   // ==========================================
   async function pushWorkoutsToGitHubAndRunAction() {
     let repo = document.getElementById('ghRepoInput').value.trim();
@@ -1028,7 +1038,7 @@
     repo = repo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
 
     if (!repo || !token) {
-      alert("Inserisci GitHub Repo (es. christianadamo80-dev/trainingrun) e il Personal Access Token nelle impostazioni.");
+      alert("Inserisci GitHub Repo e il Personal Access Token nelle impostazioni.");
       return;
     }
 
@@ -1167,229 +1177,4 @@
     try {
       alert("L'IA sta elaborando la proposta di allenamento adatta alla tua forma...");
       const reply = await callGemini(prompt);
-      const cleanJson = reply.replace(/```json/g, '').replace(/```/g, '').trim();
-      const plan = JSON.parse(cleanJson);
-
-      openWorkoutBuilderModal();
-      document.getElementById('wbTitle').value = plan.title || "Workout Proposto da Coach IA";
-      currentWorkoutSteps = plan.steps || [];
-      renderWorkoutStepRows();
-    } catch (e) {
-      alert("Errore generazione IA: " + e.message);
-    }
-  }
-
-  // ==========================================
-  // 7. GRAFICI, DB & SELEZIONE ATTIVITÀ
-  // ==========================================
-  function computePMC(acts) {
-    if (!acts.length) return [];
-    let tssByDate = {};
-    acts.forEach(a => { tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + (a.rTSS || 0); });
-    const dates = Object.keys(tssByDate).sort();
-    let cur = new Date(dates[0]);
-    cur.setDate(cur.getDate() - 14);
-    let end = new Date();
-    let ctl = 0, atl = 0, pmcSeries = [];
-
-    while (cur <= end) {
-      const dStr = cur.toISOString().split('T')[0];
-      const dayTss = tssByDate[dStr] || 0;
-      ctl += (dayTss - ctl) * CTL_DECAY;
-      atl += (dayTss - atl) * ATL_DECAY;
-      pmcSeries.push({ date: dStr, tss: dayTss, ctl: Math.round(ctl*10)/10, atl: Math.round(atl*10)/10, tsb: Math.round((ctl-atl)*10)/10 });
-      cur.setDate(cur.getDate() + 1);
-    }
-    return pmcSeries;
-  }
-
-  function updateTrainingStatusBanner(pmcSeries, acts) {
-    if (!pmcSeries.length) return;
-    const today = pmcSeries[pmcSeries.length - 1];
-    document.getElementById('bannerCTL').innerText = today.ctl;
-    document.getElementById('bannerATL').innerText = today.atl;
-    document.getElementById('bannerTSB').innerText = (today.tsb > 0 ? '+' : '') + today.tsb;
-    document.getElementById('statusBadge').innerText = today.tsb >= -10 && today.tsb <= 20 ? "Forma Ottimale" : (today.tsb < -25 ? "Fatica Elevata" : "Recupero");
-  }
-
-  function renderPMCChart(pmcData) {
-    const ctx = document.getElementById('pmcChart').getContext('2d');
-    if (pmcChartInstance) pmcChartInstance.destroy();
-    if (!pmcData.length) return;
-
-    pmcChartInstance = new Chart(ctx, {
-      data: {
-        labels: pmcData.map(d => d.date),
-        datasets: [
-          { type: 'line', label: 'CTL (Fitness)', data: pmcData.map(d => d.ctl), borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0 },
-          { type: 'line', label: 'ATL (Fatica)', data: pmcData.map(d => d.atl), borderColor: '#f87171', borderWidth: 1.8, pointRadius: 0 },
-          { type: 'line', label: 'TSB (Forma)', data: pmcData.map(d => d.tsb), borderColor: '#fbbf24', fill: true, backgroundColor: 'rgba(251, 191, 36, 0.08)', pointRadius: 0 },
-          { type: 'bar', label: 'TSS', data: pmcData.map(d => d.tss), backgroundColor: 'rgba(16, 185, 129, 0.45)', yAxisID: 'yTSS' }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { grid: { color: '#1a2333' } },
-          y: { grid: { color: '#243247' } },
-          yTSS: { position: 'right', display: false }
-        }
-      }
-    });
-  }
-
-  function showGlobalDashboard() {
-    selectedActivityId = null;
-    document.getElementById('actCount').innerText = activities.length;
-    const listEl = document.getElementById('activityList');
-
-    if (!activities.length) {
-      listEl.innerHTML = `<p style="padding:14px; color:var(--muted); font-size:0.8rem;">Nessuna attività</p>`;
-      return;
-    }
-
-    listEl.innerHTML = activities.slice().sort((a,b)=>b.startTime-a.startTime).map(act => `
-      <div class="activity-row ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
-        <div>
-          <div class="act-date">${act.dateStr}</div>
-          <div class="act-title">${act.title}</div>
-          <div class="act-stats">${(act.totalDistKm || 0).toFixed(1)} km | D+ ${act.totalElevationGain || 0}m</div>
-        </div>
-        <span class="badge-tss">${act.rTSS || 0} TSS</span>
-      </div>
-    `).join('');
-
-    const totDist = activities.reduce((s,a)=>s+(a.totalDistKm || 0),0);
-    const totDPlus = activities.reduce((s,a)=>s+(a.totalElevationGain || 0),0);
-    const totTSS = activities.reduce((s,a)=>s+(a.rTSS || 0),0);
-    const totTime = activities.reduce((s,a)=>s+(a.totalTimeSec || 0),0);
-
-    const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${totDist.toFixed(1)} km`;
-    const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${totDPlus}m`;
-    const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${Math.round(totDist + (totDPlus/100))} km`;
-    const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(totTime);
-    const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${totDist > 0 ? formatSecToPace(totTime / totDist) : '--'}`;
-    const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = activities.length;
-    const elIF = document.getElementById('valIF'); if (elIF) elIF.innerText = `Uscite totali`;
-    const elTSS = document.getElementById('valTSS'); if (elTSS) elTSS.innerText = Math.round(totTSS);
-  }
-
-  function selectActivity(id) {
-    selectedActivityId = id;
-    const act = activities.find(a => a.id === id);
-    if (!act) return;
-
-    showGlobalDashboard();
-    selectedActivityId = id;
-
-    const elDist = document.getElementById('valDist'); if (elDist) elDist.innerText = `${(act.totalDistKm || 0).toFixed(2)} km`;
-    const elEle = document.getElementById('valElevation'); if (elEle) elEle.innerText = `D+ ${act.totalElevationGain || 0}m`;
-    const elKmEff = document.getElementById('valKmEffort'); if (elKmEff) elKmEff.innerText = `${act.kmEffort || ((act.totalDistKm || 0) + ((act.totalElevationGain || 0)/100)).toFixed(1)} km`;
-    const elTime = document.getElementById('valTime'); if (elTime) elTime.innerText = formatDuration(act.totalTimeSec || 0);
-    const elPace = document.getElementById('valPace'); if (elPace) elPace.innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
-    const elNGP = document.getElementById('valNGP'); if (elNGP) elNGP.innerText = formatSecToPace(act.globalNgpSec || act.avgPaceSec);
-    const elIF = document.getElementById('valIF'); if (elIF) elIF.innerText = `IF: ${(act.intensityFactor || 0.85).toFixed(2)}`;
-    const elTSS = document.getElementById('valTSS'); if (elTSS) elTSS.innerText = `${act.rTSS || 0} TSS`;
-
-    if (act.points && act.points.length > 0) {
-      if (typeof renderWorkoutChart === 'function') renderWorkoutChart(act);
-      if (typeof initOrUpdateMap === 'function') initOrUpdateMap(act);
-    }
-  }
-
-  function formatSecToPace(sec) {
-    if (!sec || isNaN(sec) || sec <= 0) return "--:--";
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
-  }
-
-  function formatDuration(sec) {
-    if (!sec || isNaN(sec) || sec <= 0) return "--";
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = Math.floor(sec % 60);
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    return `${m}m ${s}s`;
-  }
-
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = (e) => {
-        const d = e.target.result;
-        if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
-      };
-      request.onsuccess = (e) => { db = e.target.result; resolve(db); };
-      request.onerror = (e) => reject(e);
-    });
-  }
-
-  function dbGetAllActivities() {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const req = tx.objectStore(STORE_NAME).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-    });
-  }
-
-  function dbSaveActivity(act) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).put(act);
-      tx.oncomplete = () => resolve();
-      tx.onerror = (e) => reject(e);
-    });
-  }
-
-  function dbClearAll() {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = (e) => reject(e);
-    });
-  }
-
-  function openHRModal() {
-    alert("Configurazione zone LTHR attiva nelle preferenze atleta.");
-  }
-
-  window.addEventListener('DOMContentLoaded', async () => {
-    await initDB();
-    loadAthletesFromStorage();
-
-    const savedClientId = localStorage.getItem('tp_google_client_id');
-    if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
-
-    const savedGhRepo = localStorage.getItem('tp_gh_repo');
-    if (savedGhRepo) document.getElementById('ghRepoInput').value = savedGhRepo;
-
-    const savedGhToken = localStorage.getItem('tp_gh_token');
-    if (savedGhToken) document.getElementById('ghTokenInput').value = savedGhToken;
-
-    const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
-    if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
-
-    renderAthleteSelector();
-
-    try {
-      const res = await fetch('activities.json?t=' + Date.now());
-      if (res.ok) {
-        const feed = await res.json();
-        const list = Array.isArray(feed) ? feed : (feed.activities || []);
-        for (let item of list) {
-          if (!item.athleteId) item.athleteId = athletes[0].id;
-          await dbSaveActivity(item);
-        }
-      }
-    } catch(e) {}
-
-    allActivities = await dbGetAllActivities();
-    filterActivitiesForCurrentAthlete();
-  });
-</script>
-
-</body>
-</html>
+      const cleanJson = reply.replace(/```json/g, '').replace(/
