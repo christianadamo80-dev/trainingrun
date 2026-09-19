@@ -666,12 +666,10 @@
   function filterActivitiesForCurrentAthlete() {
     selectedActivityId = null;
 
-    // Se esiste un solo atleta (default), assegna tutte le attività senza athleteId a questo atleta
     if (athletes.length === 1) {
       allActivities.forEach(a => { a.athleteId = athletes[0].id; });
       activities = allActivities.slice();
     } else {
-      // Se ci sono più atleti, mostra quelle assegnate oppure quelle generiche assegnate all'atleta attivo
       activities = allActivities.filter(a => !a.athleteId || a.athleteId === currentAthleteId || a.athleteId === "ath_default");
     }
 
@@ -1417,7 +1415,10 @@
 
     renderAthleteSelector();
 
-    // Rilettura sincrona e salvataggio
+    // 1. Carica i dati locali già presenti
+    allActivities = await dbGetAllActivities();
+
+    // 2. Tenta di aggiornare con activities.json attendendo la fine delle scritture
     try {
       const res = await fetch('activities.json?t=' + Date.now());
       if (res.ok) {
@@ -1427,10 +1428,13 @@
           if (!item.athleteId) item.athleteId = athletes[0].id;
           await dbSaveActivity(item);
         }
+        allActivities = await dbGetAllActivities();
       }
-    } catch(e) {}
+    } catch(e) {
+      console.warn("Lettura activities.json non riuscita, uso dati memorizzati:", e);
+    }
 
-    allActivities = await dbGetAllActivities();
+    // 3. Applica il filtro e disegna l'intera dashboard
     filterActivitiesForCurrentAthlete();
   });
 </script>
