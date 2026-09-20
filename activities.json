@@ -1,5 +1,25 @@
 [
   {
+    "id": "garmin_24427623647",
+    "athleteId": "ath_default",
+    "title": "Cornedo Vicentino - (LR) Easy Long Run 2:00 h",
+    "startTime": 1789890491000,
+    "dateStr": "2026-09-20",
+    "totalDistKm": 16.43,
+    "totalElevationGain": 765,
+    "totalElevationLoss": 0,
+    "totalTimeSec": 6490,
+    "avgPaceSec": 395,
+    "globalNgpSec": 395,
+    "intensityFactor": 0.85,
+    "rTSS": 108,
+    "kmEffort": 24.1,
+    "vam": 0,
+    "avgHR": 149,
+    "maxHR": 167,
+    "points": []
+  },
+  {
     "id": "garmin_24416217920",
     "athleteId": "ath_default",
     "title": "Vicenza Corsa",
