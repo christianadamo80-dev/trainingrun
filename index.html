@@ -3,262 +3,550 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Strava Trail Dashboard</title>
+  <title>Running & Trail Analytics Pro - Strava & TrainingPeaks Edition</title>
   
+  <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
     :root {
       --strava-orange: #fc5200;
-      --strava-orange-dark: #e04900;
-      --bg-page: #f7f7fa;
-      --card-bg: #ffffff;
-      --text-dark: #242428;
-      --text-muted: #6d6d78;
-      --border-color: #e5e5ea;
+      --strava-orange-hover: #e04900;
+      --bg: #0f1015;
+      --card-bg: #1a1b23;
+      --card-inner: #242531;
+      --border: #2d2f3d;
+      --text: #ffffff;
+      --muted: #9598a6;
+      --accent-ctl: #00b4d8;
+      --accent-atl: #ff4d6d;
+      --accent-tsb: #ffb703;
+      --accent-green: #06d6a0;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg-page); color: var(--text-dark); padding: 20px; }
-    .container { max-width: 1380px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    body { background-color: var(--bg); color: var(--text); padding: 18px 14px; }
+    .container { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 
-    /* Header Nav Strava */
+    /* Header Nav */
     header {
       background: var(--card-bg);
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      padding: 14px 24px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
     }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .logo-strava {
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo-badge {
       background: var(--strava-orange);
       color: #fff;
       font-weight: 900;
       font-size: 1.15rem;
       letter-spacing: -0.05em;
-      padding: 6px 12px;
-      border-radius: 4px;
+      padding: 5px 10px;
+      border-radius: 6px;
     }
-    .brand h1 { font-size: 1.25rem; font-weight: 800; color: #1f1f23; }
+    .brand h1 { font-size: 1.25rem; font-weight: 800; }
 
-    .main-grid {
+    .btn-strava {
+      background: var(--card-inner);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 13px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn-strava:hover { background: #2f3140; border-color: #434657; }
+    .btn-strava.primary { background: var(--strava-orange); border-color: var(--strava-orange); color: #fff; }
+    .btn-strava.primary:hover { background: var(--strava-orange-hover); }
+    .btn-strava.success { background: #059669; border-color: #059669; color: #fff; }
+    .btn-strava.ai { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: #fff; }
+    .btn-strava.danger { color: #ff6b6b; background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.3); }
+
+    /* Barra Impostazioni */
+    .settings-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .settings-bar label { font-size: 0.76rem; color: var(--muted); font-weight: 700; }
+    .settings-bar input, .settings-bar select {
+      background: #111217;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    /* Training Status Banner */
+    .status-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
       display: grid;
       grid-template-columns: 1fr;
-      gap: 20px;
+      gap: 16px;
+      align-items: center;
     }
-    @media (min-width: 1040px) {
-      .main-grid { grid-template-columns: 360px 1fr; }
+    @media (min-width: 900px) {
+      .status-banner { grid-template-columns: 320px 1fr 280px; }
     }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; }
+    .status-metrics { display: flex; justify-content: space-around; background: #12131a; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); }
+    .status-col { text-align: center; }
+    .status-col .val { font-size: 1.4rem; font-weight: 800; }
+    .status-col .lbl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-top: 3px; }
 
-    /* Feed Attività Laterale */
-    .activity-feed {
+    /* Box Feedback IA */
+    .ai-feedback-box {
+      display: none;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid #6366f1;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #a5b4fc; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .ai-feedback-content { font-size: 0.84rem; color: #e2e8f0; line-height: 1.6; }
+
+    /* Calendario TrainingPeaks/Strava */
+    .tp-calendar-container {
       background: var(--card-bg);
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      max-height: 860px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
+      gap: 14px;
+    }
+    .calendar-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .cal-view-switch { display: flex; background: #111217; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .cal-view-btn { background: transparent; border: none; color: var(--muted); padding: 7px 14px; font-size: 0.8rem; cursor: pointer; font-weight: 700; }
+    .cal-view-btn.active { background: #2a2c3a; color: #fff; }
+
+    .calendar-grid-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: var(--muted);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .cal-cell {
+      background: #14151c;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-height: 95px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .cal-cell:hover { border-color: var(--strava-orange); }
+    .cal-cell.today { border: 1.5px solid var(--strava-orange); background: rgba(252, 82, 0, 0.05); }
+    .cal-cell.different-month { opacity: 0.3; }
+    .cal-cell-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--muted); font-weight: 700; }
+
+    .cal-item {
+      font-size: 0.72rem;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cal-item.completed { background: rgba(252, 82, 0, 0.2); border-left: 3px solid var(--strava-orange); color: #ffb899; }
+    .cal-item.planned { background: rgba(0, 180, 216, 0.2); border-left: 3px solid var(--accent-ctl); color: #caf0f8; }
+
+    /* Builder Workout Modal */
+    #workoutModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+    .workout-modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      width: 92%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .step-row {
+      display: grid;
+      grid-template-columns: 110px 100px 1fr 40px;
+      gap: 8px;
+      align-items: center;
+      background: #14151c;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .step-row select, .step-row input { background: #1e1f2a; border: 1px solid var(--border); color: #fff; padding: 5px 8px; border-radius: 4px; font-size: 0.8rem; }
+
+    /* PMC Card */
+    .pmc-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pmc-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+
+    /* Layout Principale a 2 Colonne (Logbook + Strava Detail) */
+    .main-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 1040px) { .main-grid { grid-template-columns: 360px 1fr; } }
+
+    .activity-feed-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      max-height: 880px;
       overflow: hidden;
     }
     .feed-header {
       padding: 14px 18px;
-      font-size: 0.95rem;
+      border-bottom: 1px solid var(--border);
       font-weight: 800;
-      border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
-    .feed-list { overflow-y: auto; flex: 1; }
-    .feed-item {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border-color);
+    .feed-items { overflow-y: auto; flex: 1; }
+    .activity-entry {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
       cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       transition: background 0.15s;
     }
-    .feed-item:hover { background: #fafafa; }
-    .feed-item.active { background: #fff5f0; border-left: 5px solid var(--strava-orange); }
-    .item-date { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
-    .item-title { font-size: 0.92rem; font-weight: 800; margin: 3px 0; color: #111; }
-    .item-stats { font-size: 0.8rem; color: var(--text-muted); }
+    .activity-entry:hover { background: var(--card-inner); }
+    .activity-entry.active { background: #262838; border-left: 4px solid var(--strava-orange); }
+    .act-date { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+    .act-title { font-weight: 700; font-size: 0.9rem; margin: 2px 0; color: #fff; }
+    .act-stats { font-size: 0.78rem; color: var(--muted); }
+    .badge-itra { background: rgba(252, 82, 0, 0.18); color: var(--strava-orange); padding: 3px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 800; }
 
-    /* Dashboard Corsa Strava */
-    .strava-card {
+    /* Strava Detail Box */
+    .strava-detail-box {
       background: var(--card-bg);
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
-    .act-header-top { display: flex; justify-content: space-between; align-items: flex-start; }
-    .act-title-big { font-size: 1.6rem; font-weight: 900; color: #111; letter-spacing: -0.02em; }
-    .act-date-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
-    .badge-itra-big {
-      background: #fff0e8;
-      border: 1px solid #ffd8c7;
-      color: var(--strava-orange);
-      font-weight: 900;
-      font-size: 0.88rem;
-      padding: 6px 12px;
-      border-radius: 6px;
-    }
+    .strava-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
+    .strava-title { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em; }
 
-    /* Griglia Statistiche Strava */
-    .strava-metrics-row {
+    .strava-stat-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 16px;
-      border-top: 1px solid var(--border-color);
-      border-bottom: 1px solid var(--border-color);
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 14px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
       padding: 16px 0;
     }
-    .metric-col { display: flex; flex-direction: column; }
-    .metric-lbl { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
-    .metric-val { font-size: 1.8rem; font-weight: 900; color: #1f1f23; letter-spacing: -0.03em; }
-    .metric-sub { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .stat-col { display: flex; flex-direction: column; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+    .stat-val { font-size: 1.65rem; font-weight: 900; color: #fff; letter-spacing: -0.02em; }
+    .stat-sub { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
 
     /* Mappa Strava */
-    .map-container-box {
-      border-radius: 8px;
+    .map-box {
+      border-radius: 10px;
       overflow: hidden;
-      border: 1px solid var(--border-color);
-      height: 380px;
+      border: 1px solid var(--border);
+      height: 340px;
       width: 100%;
-      position: relative;
     }
     #map { height: 100%; width: 100%; }
 
-    /* Grafico Altimetrico Strava */
-    .elevation-box {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .elevation-title-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      font-weight: 800;
-      color: #333;
-    }
-    .elevation-canvas-wrap {
-      position: relative;
-      height: 240px;
-      width: 100%;
-    }
+    /* Grafico Altimetrico */
+    .chart-wrapper { position: relative; height: 240px; width: 100%; }
 
-    /* Spaccato per Chilometro (Splits) */
-    .splits-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.84rem;
-      margin-top: 10px;
-    }
-    .splits-table th {
-      text-align: left;
-      padding: 8px 10px;
-      color: var(--text-muted);
-      border-bottom: 2px solid var(--border-color);
-      font-size: 0.72rem;
-      text-transform: uppercase;
-    }
-    .splits-table td {
-      padding: 10px;
-      border-bottom: 1px solid var(--border-color);
-      font-weight: 700;
-    }
+    /* Splits Table */
+    .splits-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .splits-table th { text-align: left; padding: 8px; color: var(--muted); border-bottom: 2px solid var(--border); font-size: 0.72rem; text-transform: uppercase; }
+    .splits-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); font-weight: 700; }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- Header -->
   <header>
     <div class="brand">
-      <div class="logo-strava">STRAVA</div>
+      <div class="logo-badge">STRAVA</div>
       <div>
         <h1>Trail Analytics Studio</h1>
+        <p style="color: var(--muted); font-size: 0.76rem; font-weight: 600;">Calendario TrainingPeaks, Altimetria Strava & Punti ITRA</p>
       </div>
     </div>
-    <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);" id="actCounterHeader">0 Attività sincronizzate</div>
+
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <label for="athleteSelect" style="font-size: 0.78rem; font-weight: 700; color: var(--muted);">Atleta:</label>
+      <select id="athleteSelect" onchange="switchAthlete(this.value)"></select>
+      <button class="btn-strava" onclick="createNewAthlete()">➕ Nuovo</button>
+      <button class="btn-strava" onclick="renameCurrentAthlete()">✏️</button>
+      <button class="btn-strava danger" onclick="deleteCurrentAthlete()">🗑️</button>
+      <button class="btn-strava primary" id="btnGoogleAuth" onclick="handleAuthClick()">☁️ Drive</button>
+      <button class="btn-strava" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()">⬆️ Backup</button>
+      <button class="btn-strava" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()">⬇️ Sync</button>
+    </div>
   </header>
 
-  <div class="main-grid">
-    <!-- Elenco Corse -->
-    <div class="activity-feed">
-      <div class="feed-header">
-        <span>Le tue corse</span>
+  <!-- Impostazioni Rapide -->
+  <div class="settings-bar">
+    <div>
+      <label for="clientIdInput">Client ID Drive:</label>
+      <input type="text" id="clientIdInput" style="width: 170px;" placeholder="OAuth2 Client ID" onchange="saveDriveClientId()">
+    </div>
+    <div>
+      <label for="ghRepoInput">GitHub Repo:</label>
+      <input type="text" id="ghRepoInput" style="width: 150px;" placeholder="user/repo" onchange="saveGitHubCredentials()">
+    </div>
+    <div>
+      <label for="ghTokenInput">GitHub Token:</label>
+      <input type="password" id="ghTokenInput" style="width: 120px;" placeholder="ghp_..." onchange="saveGitHubCredentials()">
+    </div>
+    <div>
+      <label for="geminiApiKey">Gemini Key:</label>
+      <input type="password" id="geminiApiKey" style="width: 120px;" placeholder="AI Key" onchange="saveGeminiApiKey()">
+    </div>
+    <div>
+      <label for="rfTPA">rFTPa (<span id="lblCurAthleteName">Atleta</span>):</label>
+      <input type="text" id="rfTPA" value="04:15" style="width: 55px;">
+    </div>
+    <div>
+      <label for="lthr">LTHR (bpm):</label>
+      <input type="number" id="lthr" value="168" style="width: 50px;">
+    </div>
+  </div>
+
+  <!-- Status Banner Forma Fisica -->
+  <div class="status-banner" id="statusBanner">
+    <div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="status-badge" id="statusBadge" style="background: rgba(252, 82, 0, 0.2); color: var(--strava-orange);">Stato Forma</div>
+        <button class="btn-strava ai" style="padding: 4px 10px; font-size: 0.75rem;" onclick="askAITrainingStatus()">🤖 Analizza con IA</button>
       </div>
-      <div class="feed-list" id="activityList"></div>
+      <div style="font-size: 0.82rem; color: var(--muted); margin-top: 6px;" id="statusDesc">Carica le corse per visualizzare l'analisi della forma fisica.</div>
+    </div>
+    <div class="status-metrics">
+      <div class="status-col"><div class="val" id="bannerCTL" style="color: var(--accent-ctl);">--</div><div class="lbl">Fitness (CTL)</div></div>
+      <div class="status-col"><div class="val" id="bannerATL" style="color: var(--accent-atl);">--</div><div class="lbl">Fatica (ATL)</div></div>
+      <div class="status-col"><div class="val" id="bannerTSB" style="color: var(--accent-tsb);">--</div><div class="lbl">Forma (TSB)</div></div>
+    </div>
+    <div style="font-size: 0.82rem; border-left: 1px solid var(--border); padding-left: 18px;">
+      <div style="display: flex; justify-content: space-between; color: var(--muted);"><span>Km Ultimi 7gg:</span><strong id="bannerKm7d" style="color:#fff;">-- km</strong></div>
+      <div style="display: flex; justify-content: space-between; color: var(--muted); margin-top: 4px;"><span>TSS Ultimi 7gg:</span><strong id="bannerTSS7d" style="color:#fff;">--</strong></div>
+    </div>
+  </div>
+
+  <!-- Box Risposta Coach IA -->
+  <div class="ai-feedback-box" id="aiStatusBox">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 id="aiStatusTitle">🤖 Valutazione Coach IA</h3>
+      <button onclick="document.getElementById('aiStatusBox').style.display='none'" style="background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1.2rem;">&times;</button>
+    </div>
+    <div class="ai-feedback-content" id="aiStatusContent">Analisi in corso...</div>
+  </div>
+
+  <!-- CALENDARIO TRAININGPEAKS -->
+  <div class="tp-calendar-container">
+    <div class="calendar-toolbar">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn-strava" onclick="navigateCalendar(-1)">◀ Prec.</button>
+        <button class="btn-strava" onclick="navigateCalendar(0)">Oggi</button>
+        <button class="btn-strava" onclick="navigateCalendar(1)">Succ. ▶</button>
+        <h2 id="calendarTitle" style="font-size: 1.1rem; margin-left: 12px; font-weight: 800;">Calendario</h2>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="cal-view-switch">
+          <button class="cal-view-btn active" id="btnViewMonth" onclick="setCalendarView('month')">Mese</button>
+          <button class="cal-view-btn" id="btnViewWeek" onclick="setCalendarView('week')">Settimana</button>
+        </div>
+        <button class="btn-strava ai" onclick="askAIGenerateWorkout()">🤖 Genera Workout</button>
+        <button class="btn-strava primary" onclick="openWorkoutBuilderModal()">➕ Nuovo Allenamento</button>
+        <button class="btn-strava success" id="btnAutoSyncGarmin" onclick="pushWorkoutsToGitHubAndRunAction()">🚀 Sync Garmin</button>
+      </div>
     </div>
 
-    <!-- Schermata Dettaglio Corsa Strava -->
-    <div class="strava-card">
-      <div class="act-header-top">
+    <div class="calendar-grid-header">
+      <div>LUN</div><div>MAR</div><div>MER</div><div>GIO</div><div>VEN</div><div>SAB</div><div>DOM</div>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
+  <!-- MODALE WORKOUT BUILDER -->
+  <div id="workoutModal">
+    <div class="workout-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <h3 style="font-size: 1.1rem; font-weight: 800;">🛠️ Costruttore Allenamento</h3>
+        <button onclick="closeWorkoutBuilderModal()" style="background: transparent; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
         <div>
-          <div class="act-date-sub" id="actDate">--</div>
-          <div class="act-title-big" id="actTitle">Seleziona una corsa</div>
+          <label style="font-size: 0.75rem; color: var(--muted); font-weight: 700;">Data esecuzione:</label>
+          <input type="date" id="wbDate" style="width: 100%; background: #111217; border: 1px solid var(--border); color: #fff; padding: 7px 10px; border-radius: 6px;">
         </div>
-        <div class="badge-itra-big" id="actITRA">-- ITRA</div>
-      </div>
-
-      <!-- Statistiche Chiave -->
-      <div class="strava-metrics-row">
-        <div class="metric-col">
-          <span class="metric-lbl">Distanza</span>
-          <span class="metric-val" id="valDist">--</span>
-        </div>
-        <div class="metric-col">
-          <span class="metric-lbl">Dislivello D+</span>
-          <span class="metric-val" id="valElev" style="color: var(--strava-orange);">--</span>
-        </div>
-        <div class="metric-col">
-          <span class="metric-lbl">Tempo</span>
-          <span class="metric-val" id="valTime">--</span>
-          <span class="metric-sub" id="valPace">Passo: --</span>
-        </div>
-        <div class="metric-col">
-          <span class="metric-lbl">Km-Sforzo</span>
-          <span class="metric-val" id="valEffort" style="color: #0077b6;">--</span>
-        </div>
-        <div class="metric-col">
-          <span class="metric-lbl">FC Media</span>
-          <span class="metric-val" id="valHR">--</span>
+        <div>
+          <label style="font-size: 0.75rem; color: var(--muted); font-weight: 700;">Nome Sessione:</label>
+          <input type="text" id="wbTitle" placeholder="Es. Ripetute 5x1000m Z4" style="width: 100%; background: #111217; border: 1px solid var(--border); color: #fff; padding: 7px 10px; border-radius: 6px;">
         </div>
       </div>
 
-      <!-- Mappa Strava col tracciato arancione -->
       <div>
-        <div style="font-size: 0.85rem; font-weight: 800; margin-bottom: 8px;">Mappa Tracciato</div>
-        <div class="map-container-box">
-          <div id="map"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: var(--muted); text-transform: uppercase;">Intervalli Strutturati</span>
+          <button class="btn-strava" style="padding: 4px 8px; font-size: 0.72rem;" onclick="addWorkoutStepRow()">➕ Aggiungi Step</button>
+        </div>
+        <div class="step-list" id="workoutStepsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+
+      <div style="background: #14151c; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem; display: flex; justify-content: space-between;">
+        <span>Durata Totale: <strong id="wbTotalDuration">0 min</strong></span>
+        <span>Stress TSS Stimato: <strong id="wbEstimatedTSS" style="color: var(--accent-ctl);">0 TSS</strong></span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-strava" onclick="closeWorkoutBuilderModal()">Chiudi</button>
+        <button class="btn-strava primary" onclick="saveStructuredWorkout()">Salva a Calendario</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PMC Performance Chart (CTL / ATL / TSB) -->
+  <div class="pmc-card">
+    <div class="pmc-header">
+      <div style="font-size: 1rem; font-weight: 800;">📈 Performance Management Chart (Fitness CTL / Fatica ATL / Forma TSB) - <span id="pmcAthleteTitle" style="color: var(--strava-orange);">Atleta</span></div>
+      <div style="display: flex; gap: 6px;">
+        <select id="pmcYearSelect" onchange="onPMCFilterChange()"><option value="all">Tutti gli anni</option></select>
+        <select id="pmcMonthSelect" onchange="onPMCFilterChange()">
+          <option value="all">Tutto l'anno</option>
+          <option value="01">Gennaio</option><option value="02">Febbraio</option><option value="03">Marzo</option><option value="04">Aprile</option>
+          <option value="05">Maggio</option><option value="06">Giugno</option><option value="07">Luglio</option><option value="08">Agosto</option>
+          <option value="09">Settembre</option><option value="10">Ottobre</option><option value="11">Novembre</option><option value="12">Dicembre</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-wrapper"><canvas id="pmcChart"></canvas></div>
+  </div>
+
+  <!-- Split View Principale: Logbook + Strava Detail -->
+  <div class="main-grid">
+    <!-- Lista Attività -->
+    <div class="activity-feed-card">
+      <div class="feed-header">
+        <span>Attività Recenti (<span id="actCount">0</span>)</span>
+      </div>
+      <div class="feed-items" id="activityList"></div>
+    </div>
+
+    <!-- Scheda Corsa Strava con Mappa e Altimetria -->
+    <div class="strava-detail-box">
+      <div class="strava-title-row">
+        <div>
+          <div style="font-size: 0.8rem; color: var(--muted); font-weight: 700;" id="stravaActDate">--</div>
+          <div class="strava-title" id="stravaActTitle">Seleziona una sessione</div>
+        </div>
+        <span class="badge-itra" id="stravaActITRA" style="font-size: 0.9rem; padding: 6px 12px;">-- ITRA</span>
+      </div>
+
+      <!-- Statistiche Strava Strip -->
+      <div class="strava-stat-grid">
+        <div class="stat-col">
+          <span class="stat-label">Distanza</span>
+          <span class="stat-val" id="valDist">--</span>
+        </div>
+        <div class="stat-col">
+          <span class="stat-label">Dislivello D+</span>
+          <span class="stat-val" id="valElev" style="color: var(--strava-orange);">--</span>
+        </div>
+        <div class="stat-col">
+          <span class="stat-label">Tempo</span>
+          <span class="stat-val" id="valTime">--</span>
+          <span class="stat-sub" id="valPace">Passo: --</span>
+        </div>
+        <div class="stat-col">
+          <span class="stat-label">Km-Sforzo</span>
+          <span class="stat-val" id="valEffort" style="color: var(--accent-ctl);">--</span>
+          <span class="stat-sub">Dist + (D+/100)</span>
+        </div>
+        <div class="stat-col">
+          <span class="stat-label">TSS Carico</span>
+          <span class="stat-val" id="valTSS" style="color: var(--accent-green);">--</span>
+          <span class="stat-sub" id="valIF">IF: --</span>
         </div>
       </div>
 
-      <!-- Grafico Profilo Altimetrico Strava -->
-      <div class="elevation-box">
-        <div class="elevation-title-row">
-          <span>Profilo Altitudine per Chilometro</span>
-          <span id="eleSummary">D+ -- m</span>
+      <!-- Mappa Strava col Tracciato Arancione Evidente -->
+      <div>
+        <div style="font-size: 0.88rem; font-weight: 800; margin-bottom: 8px;">Tracciato GPS Strava</div>
+        <div class="map-box"><div id="map"></div></div>
+      </div>
+
+      <!-- Profilo Altimetrico Strava Km per Km -->
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 800; margin-bottom: 8px;">
+          <span style="color: var(--strava-orange);">Profilo Altitudine per Chilometro</span>
+          <span style="color: var(--muted);" id="lblEleSummary">--</span>
         </div>
-        <div class="elevation-canvas-wrap">
-          <canvas id="elevationChart"></canvas>
-        </div>
+        <div class="chart-wrapper"><canvas id="workoutChart"></canvas></div>
       </div>
 
       <!-- Tabella Split Chilometrici -->
       <div>
-        <div style="font-size: 0.85rem; font-weight: 800; margin-bottom: 6px;">Spaccato Chilometri</div>
+        <div style="font-size: 0.88rem; font-weight: 800; margin-bottom: 6px;">Spaccato Chilometrico</div>
         <table class="splits-table">
-          <thead>
-            <tr><th>Km</th><th>Passo Medio</th><th>Dislivello</th><th>FC Media</th></tr>
-          </thead>
+          <thead><tr><th>Km</th><th>Passo Medio</th><th>Dislivello</th><th>FC Media</th></tr></thead>
           <tbody id="splitsBody"></tbody>
         </table>
       </div>
@@ -267,13 +555,38 @@
 </div>
 
 <script>
+  // ==========================================
+  // 1. STATO & COSTANTI
+  // ==========================================
+  const DRIVE_FILENAME = "running_logbook_pro.json";
+  const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  let tokenClient = null;
+  let accessToken = null;
+
+  const DB_NAME = "TP_Running_Pro_Master_DB";
+  const STORE_NAME = "activities";
+  let db = null;
+
+  let athletes = [{ id: "ath_default", name: "Atleta 1", rfTPA: "04:15", lthr: 168 }];
+  let currentAthleteId = "ath_default";
+  let allActivities = [];
   let activities = [];
   let selectedActivityId = null;
-  let chartInstance = null;
+  let scheduledWorkouts = [];
+
+  let calendarCurrentDate = new Date();
+  let calendarViewMode = 'month';
+
+  let workoutChartInstance = null;
+  let pmcChartInstance = null;
   let mapInstance = null;
   let mapPolyline = null;
   let mapStartMarker = null;
 
+  const CTL_DECAY = 1 - Math.exp(-1 / 42);
+  const ATL_DECAY = 1 - Math.exp(-1 / 7);
+
+  // Calcolo ITRA Calibrato (580-600 punti su 24km e 1600m D+ in 3h49m)
   function calculateITRA(distKm, elevGainM, timeSec) {
     if (!distKm || distKm <= 0.2 || !timeSec || timeSec <= 60) return 0;
     const effortKm = distKm + (elevGainM / 100.0);
@@ -284,30 +597,560 @@
     return Math.min(1000, Math.max(100, score));
   }
 
-  function formatPace(sec) {
-    if (!sec || isNaN(sec)) return "--:--";
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
+  function getCurrentAthlete() {
+    return athletes.find(a => a.id === currentAthleteId) || athletes[0];
   }
 
-  function formatTime(sec) {
-    if (!sec) return "--";
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = Math.floor(sec % 60);
-    return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+  function loadAthletesFromStorage() {
+    const saved = localStorage.getItem('tp_athletes_data');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) athletes = parsed;
+      } catch(e) {}
+    }
+    const savedCurId = localStorage.getItem('tp_current_athlete_id');
+    if (savedCurId && athletes.some(a => a.id === savedCurId)) currentAthleteId = savedCurId;
+
+    const savedWorkouts = localStorage.getItem('tp_scheduled_workouts');
+    if (savedWorkouts) {
+      try { scheduledWorkouts = JSON.parse(savedWorkouts); } catch(e) {}
+    }
   }
 
-  function renderList() {
-    const list = document.getElementById('activityList');
-    document.getElementById('actCounterHeader').innerText = `${activities.length} Attività sincronizzate`;
+  function saveAthletesToStorage() {
+    localStorage.setItem('tp_athletes_data', JSON.stringify(athletes));
+    localStorage.setItem('tp_current_athlete_id', currentAthleteId);
+  }
 
-    list.innerHTML = activities.map(act => `
-      <div class="feed-item ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
-        <div class="item-date">${act.dateStr}</div>
-        <div class="item-title">${act.title}</div>
-        <div class="item-stats">${act.totalDistKm.toFixed(1)} km • D+ ${act.totalElevationGain}m • ${formatTime(act.totalTimeSec)}</div>
+  function saveWorkoutsToStorage() {
+    localStorage.setItem('tp_scheduled_workouts', JSON.stringify(scheduledWorkouts));
+  }
+
+  function saveGitHubCredentials() {
+    localStorage.setItem('tp_gh_repo', document.getElementById('ghRepoInput').value.trim());
+    localStorage.setItem('tp_gh_token', document.getElementById('ghTokenInput').value.trim());
+  }
+
+  function saveDriveClientId() {
+    localStorage.setItem('tp_google_client_id', document.getElementById('clientIdInput').value.trim());
+    tokenClient = null;
+  }
+
+  function renderAthleteSelector() {
+    const sel = document.getElementById('athleteSelect');
+    sel.innerHTML = athletes.map(a => `<option value="${a.id}" ${a.id === currentAthleteId ? 'selected' : ''}>${a.name}</option>`).join('');
+    const cur = getCurrentAthlete();
+    document.getElementById('lblCurAthleteName').innerText = cur.name;
+    document.getElementById('pmcAthleteTitle').innerText = cur.name;
+  }
+
+  function switchAthlete(id) {
+    currentAthleteId = id;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function createNewAthlete() {
+    const name = prompt("Nome nuovo atleta:");
+    if (!name || !name.trim()) return;
+    const newId = "ath_" + Date.now();
+    athletes.push({ id: newId, name: name.trim(), rfTPA: "04:30", lthr: 165 });
+    currentAthleteId = newId;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function renameCurrentAthlete() {
+    const cur = getCurrentAthlete();
+    const newName = prompt("Rinomina atleta:", cur.name);
+    if (!newName || !newName.trim()) return;
+    cur.name = newName.trim();
+    saveAthletesToStorage();
+    renderAthleteSelector();
+  }
+
+  function deleteCurrentAthlete() {
+    if (athletes.length <= 1) return alert("Deve esserci almeno un atleta.");
+    const cur = getCurrentAthlete();
+    if (!confirm(`Eliminare l'atleta "${cur.name}"?`)) return;
+    allActivities = allActivities.filter(a => a.athleteId !== cur.id);
+    athletes = athletes.filter(a => a.id !== cur.id);
+    currentAthleteId = athletes[0].id;
+    saveAthletesToStorage();
+    renderAthleteSelector();
+    filterActivitiesForCurrentAthlete();
+  }
+
+  function filterActivitiesForCurrentAthlete() {
+    selectedActivityId = null;
+    if (athletes.length === 1) {
+      allActivities.forEach(a => { a.athleteId = athletes[0].id; });
+      activities = allActivities.slice();
+    } else {
+      activities = allActivities.filter(a => !a.athleteId || a.athleteId === currentAthleteId || a.athleteId === "ath_default");
+    }
+
+    activities.forEach(a => {
+      a.itraScore = calculateITRA(a.totalDistKm, a.totalElevationGain, a.totalTimeSec);
+    });
+
+    populatePMCYearSelector();
+    renderActivityFeed();
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+    renderCalendar();
+
+    if (activities.length > 0) {
+      const sorted = activities.slice().sort((a,b) => b.startTime - a.startTime);
+      selectActivity(sorted[0].id);
+    }
+  }
+
+  function populatePMCYearSelector() {
+    const yearSelect = document.getElementById('pmcYearSelect');
+    if (!yearSelect) return;
+    const years = new Set();
+    activities.forEach(a => { if (a.dateStr) years.add(a.dateStr.substring(0, 4)); });
+    let html = '<option value="all">Tutti gli anni</option>';
+    Array.from(years).sort().reverse().forEach(y => { html += `<option value="${y}">${y}</option>`; });
+    yearSelect.innerHTML = html;
+  }
+
+  function onPMCFilterChange() {
+    const pmc = computePMC(activities);
+    renderPMCChart(pmc);
+    updateTrainingStatusBanner(pmc, activities);
+  }
+
+  // ==========================================
+  // 2. GOOGLE DRIVE OAUTH2
+  // ==========================================
+  function initGoogleOAuth() {
+    let clientId = document.getElementById('clientIdInput').value.trim() || localStorage.getItem('tp_google_client_id');
+    if (!clientId) {
+      clientId = prompt("Inserisci il tuo Google Drive Client ID OAuth2:");
+      if (clientId && clientId.trim()) {
+        document.getElementById('clientIdInput').value = clientId.trim();
+        saveDriveClientId();
+      } else return false;
+    }
+
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+      alert("Libreria Google Identity non ancora caricata.");
+      return false;
+    }
+
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: DRIVE_SCOPE,
+        callback: (res) => {
+          if (res.error) return alert("Errore auth: " + res.error);
+          accessToken = res.access_token;
+          const btn = document.getElementById('btnGoogleAuth');
+          btn.innerText = "✅ Connesso";
+          document.getElementById('btnPushDrive').style.display = "inline-flex";
+          document.getElementById('btnPullDrive').style.display = "inline-flex";
+        }
+      });
+      return true;
+    } catch(e) { alert("Errore: " + e.message); return false; }
+  }
+
+  function handleAuthClick() {
+    if (!tokenClient) {
+      if (!initGoogleOAuth()) return;
+    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+
+  async function findDriveFileId() {
+    const query = encodeURIComponent(`name = '${DRIVE_FILENAME}' and trashed = false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const data = await res.json();
+    return data.files && data.files.length ? data.files[0].id : null;
+  }
+
+  async function saveToGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Drive!");
+    const btn = document.getElementById('btnPushDrive');
+    btn.innerText = "Salvo...";
+    try {
+      const allActs = await dbGetAllActivities();
+      const content = JSON.stringify({ athletes, activities: allActs, scheduledWorkouts });
+      const fileId = await findDriveFileId();
+      if (fileId) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: content
+        });
+      } else {
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json' })], { type: 'application/json' }));
+        form.append('file', new Blob([content], { type: 'application/json' }));
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form });
+      }
+      btn.innerText = "✅ Salvato!";
+      setTimeout(() => { btn.innerText = "⬆️ Backup"; }, 2000);
+    } catch(e) { alert("Errore: " + e.message); btn.innerText = "⬆️ Backup"; }
+  }
+
+  async function loadFromGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Drive!");
+    const btn = document.getElementById('btnPullDrive');
+    btn.innerText = "Carico...";
+    try {
+      const fileId = await findDriveFileId();
+      if (!fileId) return alert("Nessun backup trovato su Drive.");
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const data = await res.json();
+      if (data.activities) {
+        for (let act of data.activities) await dbSaveActivity(act);
+        allActivities = await dbGetAllActivities();
+        filterActivitiesForCurrentAthlete();
+        btn.innerText = "✅ Sincronizzato!";
+        setTimeout(() => { btn.innerText = "⬇️ Sync"; }, 2000);
+      }
+    } catch(e) { alert("Errore: " + e.message); btn.innerText = "⬇️ Sync"; }
+  }
+
+  // ==========================================
+  // 3. CALENDARIO SETTIMANALE & MENSILE
+  // ==========================================
+  function setCalendarView(mode) {
+    calendarViewMode = mode;
+    document.getElementById('btnViewMonth').classList.toggle('active', mode === 'month');
+    document.getElementById('btnViewWeek').classList.toggle('active', mode === 'week');
+    renderCalendar();
+  }
+
+  function navigateCalendar(dir) {
+    if (dir === 0) calendarCurrentDate = new Date();
+    else {
+      if (calendarViewMode === 'month') calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + dir);
+      else calendarCurrentDate.setDate(calendarCurrentDate.getDate() + (dir * 7));
+    }
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const cur = getCurrentAthlete();
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+
+    const year = calendarCurrentDate.getFullYear();
+    const month = calendarCurrentDate.getMonth();
+    const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+    document.getElementById('calendarTitle').innerText = `${monthNames[month]} ${year}`;
+
+    let daysToRender = [];
+    if (calendarViewMode === 'month') {
+      const firstDay = new Date(year, month, 1);
+      const startingDay = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevMonthDays = new Date(year, month, 0).getDate();
+
+      for (let i = startingDay - 1; i >= 0; i--) daysToRender.push({ date: new Date(year, month - 1, prevMonthDays - i), currentMonth: false });
+      for (let i = 1; i <= daysInMonth; i++) daysToRender.push({ date: new Date(year, month, i), currentMonth: true });
+      const remaining = (7 - (daysToRender.length % 7)) % 7;
+      for (let i = 1; i <= remaining; i++) daysToRender.push({ date: new Date(year, month + 1, i), currentMonth: false });
+    } else {
+      const curr = new Date(calendarCurrentDate);
+      const day = (curr.getDay() + 6) % 7;
+      const monday = new Date(curr.setDate(curr.getDate() - day));
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        daysToRender.push({ date: d, currentMonth: d.getMonth() === month });
+      }
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    daysToRender.forEach(item => {
+      const dStr = item.date.toISOString().split('T')[0];
+      const isToday = dStr === todayStr;
+
+      const cell = document.createElement('div');
+      cell.className = `cal-cell ${item.currentMonth ? '' : 'different-month'} ${isToday ? 'today' : ''}`;
+      cell.onclick = () => openWorkoutBuilderModal(dStr);
+
+      const completedActs = activities.filter(a => a.dateStr === dStr);
+      const plannedActs = scheduledWorkouts.filter(w => (!w.athleteId || w.athleteId === cur.id) && w.date === dStr);
+
+      let contentHTML = `<div class="cal-cell-head"><span>${item.date.getDate()}</span>${completedActs.length ? `<span style="color:var(--strava-orange); font-size:0.68rem;">${Math.round(completedActs.reduce((s,a)=>s+(a.rTSS||0),0))} TSS</span>` : ''}</div>`;
+
+      completedActs.forEach(act => {
+        contentHTML += `<div class="cal-item completed" title="${act.title}"><span>🏃 ${(act.totalDistKm || 0).toFixed(1)}k</span><span>${act.itraScore ? '⚡' + act.itraScore : act.rTSS + 'TSS'}</span></div>`;
+      });
+      plannedActs.forEach(p => {
+        contentHTML += `<div class="cal-item planned" title="${p.name}"><span>🎯 ${p.name}</span><span>${p.durationMinutes}m</span></div>`;
+      });
+
+      cell.innerHTML = contentHTML;
+      grid.appendChild(cell);
+    });
+  }
+
+  // Builder Workout
+  let currentWorkoutSteps = [];
+  function openWorkoutBuilderModal(prefillDate) {
+    document.getElementById('workoutModal').style.display = 'flex';
+    document.getElementById('wbDate').value = prefillDate || new Date().toISOString().split('T')[0];
+    document.getElementById('wbTitle').value = "Ripetute Trail Z4";
+    currentWorkoutSteps = [
+      { type: "Warmup", duration: 15, target: "Z2" },
+      { type: "Interval", duration: 4, target: "Z4" },
+      { type: "Recovery", duration: 2, target: "Z1" },
+      { type: "Cooldown", duration: 10, target: "Z1" }
+    ];
+    renderWorkoutStepRows();
+  }
+  function closeWorkoutBuilderModal() { document.getElementById('workoutModal').style.display = 'none'; }
+  function renderWorkoutStepRows() {
+    const cont = document.getElementById('workoutStepsContainer');
+    cont.innerHTML = '';
+    currentWorkoutSteps.forEach((step, idx) => {
+      const row = document.createElement('div');
+      row.className = 'step-row';
+      row.innerHTML = `
+        <select onchange="updateStepField(${idx}, 'type', this.value)">
+          <option value="Warmup" ${step.type==='Warmup'?'selected':''}>Riscaldamento</option>
+          <option value="Interval" ${step.type==='Interval'?'selected':''}>Ripetuta</option>
+          <option value="Recovery" ${step.type==='Recovery'?'selected':''}>Recupero</option>
+          <option value="Cooldown" ${step.type==='Cooldown'?'selected':''}>Defaticamento</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <input type="number" min="1" max="180" value="${step.duration}" onchange="updateStepField(${idx}, 'duration', parseInt(this.value,10)||1)">
+          <span style="font-size:0.75rem; color:var(--muted);">min</span>
+        </div>
+        <select onchange="updateStepField(${idx}, 'target', this.value)">
+          <option value="Z1" ${step.target==='Z1'?'selected':''}>Zona 1 (Recupero)</option>
+          <option value="Z2" ${step.target==='Z2'?'selected':''}>Zona 2 (Fondo Lento)</option>
+          <option value="Z3" ${step.target==='Z3'?'selected':''}>Zona 3 (Medio)</option>
+          <option value="Z4" ${step.target==='Z4'?'selected':''}>Zona 4 (Soglia)</option>
+          <option value="Z5" ${step.target==='Z5'?'selected':''}>Zona 5 (VO2max)</option>
+        </select>
+        <button class="btn-strava danger" style="padding:4px;" onclick="removeWorkoutStepRow(${idx})">&times;</button>
+      `;
+      cont.appendChild(row);
+    });
+    updateWorkoutEstimates();
+  }
+  function updateStepField(idx, field, val) { currentWorkoutSteps[idx][field] = val; updateWorkoutEstimates(); }
+  function addWorkoutStepRow() { currentWorkoutSteps.push({ type: "Interval", duration: 5, target: "Z4" }); renderWorkoutStepRows(); }
+  function removeWorkoutStepRow(idx) { currentWorkoutSteps.splice(idx, 1); renderWorkoutStepRows(); }
+  function updateWorkoutEstimates() {
+    let totMin = 0, estTSS = 0;
+    const factorMap = { Z1: 0.55, Z2: 0.72, Z3: 0.85, Z4: 0.98, Z5: 1.15 };
+    currentWorkoutSteps.forEach(s => {
+      totMin += s.duration;
+      estTSS += (s.duration / 60) * Math.pow(factorMap[s.target] || 0.75, 2) * 100;
+    });
+    document.getElementById('wbTotalDuration').innerText = `${totMin} min`;
+    document.getElementById('wbEstimatedTSS').innerText = `${Math.round(estTSS)} TSS`;
+  }
+  function saveStructuredWorkout() {
+    const cur = getCurrentAthlete();
+    const date = document.getElementById('wbDate').value;
+    const title = document.getElementById('wbTitle').value.trim() || "Allenamento";
+    if (!date) return alert("Inserisci una data.");
+    scheduledWorkouts.push({
+      id: "plan_" + Date.now(), athleteId: cur.id, athleteName: cur.name, date, name: title,
+      durationMinutes: currentWorkoutSteps.reduce((s,x)=>s+x.duration,0), steps: currentWorkoutSteps,
+      description: currentWorkoutSteps.map(s => `${s.type} ${s.duration}' in ${s.target}`).join(' | ')
+    });
+    saveWorkoutsToStorage();
+    closeWorkoutBuilderModal();
+    renderCalendar();
+  }
+
+  // Push Garmin Action
+  async function pushWorkoutsToGitHubAndRunAction() {
+    let repo = document.getElementById('ghRepoInput').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+    const token = document.getElementById('ghTokenInput').value.trim();
+    if (!repo || !token) return alert("Inserisci GitHub Repo e Token.");
+
+    const btn = document.getElementById('btnAutoSyncGarmin');
+    btn.innerText = "⏳ Invio...";
+    btn.disabled = true;
+
+    try {
+      const path = "scheduled_workouts.json";
+      const apiUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
+      const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(scheduledWorkouts, null, 2))));
+      const headers = { "Authorization": `token ${token}`, "Accept": "application/vnd.github+json" };
+
+      let sha = null;
+      try {
+        const getRes = await fetch(apiUrl, { headers });
+        if (getRes.ok) sha = (await getRes.json()).sha;
+      } catch(e) {}
+
+      await fetch(apiUrl, { method: "PUT", headers, body: JSON.stringify({ message: "Update workouts [skip ci]", content: contentBase64, sha: sha || undefined }) });
+
+      const wfList = await fetch(`https://api.github.com/repos/${repo}/actions/workflows`, { headers });
+      if (wfList.ok) {
+        const wf = (await wfList.json()).workflows?.[0];
+        if (wf) await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${wf.id}/dispatches`, { method: "POST", headers, body: JSON.stringify({ ref: "main" }) });
+      }
+      alert("✅ Allenamenti sincronizzati con Garmin Connect!");
+      btn.innerText = "🚀 Sync Garmin"; btn.disabled = false;
+    } catch(err) {
+      alert("Errore: " + err.message);
+      btn.innerText = "🚀 Sync Garmin"; btn.disabled = false;
+    }
+  }
+
+  // ==========================================
+  // 4. MODULO IA (GEMINI)
+  // ==========================================
+  function saveGeminiApiKey() { localStorage.setItem('tp_gemini_api_key', document.getElementById('geminiApiKey').value.trim()); }
+  async function callGemini(promptText) {
+    const apiKey = document.getElementById('geminiApiKey').value.trim();
+    if (!apiKey) return alert("Inserisci la chiave Gemini.");
+
+    const models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"];
+    for (const model of models) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return window.marked ? window.marked.parse(text) : text;
+        }
+      } catch(e) {}
+    }
+    throw new Error("Modelli IA non raggiungibili.");
+  }
+
+  async function askAITrainingStatus() {
+    const cur = getCurrentAthlete();
+    const pmc = computePMC(activities);
+    if (!pmc.length) return alert("Carica prima delle sessioni.");
+    const today = pmc[pmc.length - 1];
+    const box = document.getElementById('aiStatusBox');
+    box.style.display = 'block';
+    document.getElementById('aiStatusContent').innerHTML = "<p>Elaborazione coach in corso...</p>";
+
+    try {
+      const text = await callGemini(`Coach Strava/Trail. Atleta ${cur.name}. CTL ${today.ctl}, ATL ${today.atl}, TSB ${today.tsb}. Dai un feedback conciso sullo stato di forma e i consigli per domani.`);
+      document.getElementById('aiStatusContent').innerHTML = text;
+    } catch(e) { document.getElementById('aiStatusContent').innerHTML = e.message; }
+  }
+
+  async function askAIGenerateWorkout() {
+    const cur = getCurrentAthlete();
+    try {
+      alert("L'IA sta componendo la sessione...");
+      const reply = await callGemini(`Coach trail. Atleta ${cur.name}. Restituisci SOLO un JSON valido come questo: {"title":"Nome Corsa","steps":[{"type":"Warmup","duration":15,"target":"Z2"},{"type":"Interval","duration":5,"target":"Z4"},{"type":"Recovery","duration":2,"target":"Z1"},{"type":"Cooldown","duration":10,"target":"Z1"}]}`);
+      const clean = reply.replace(/```json/g,'').replace(/```/g,'').trim();
+      const plan = JSON.parse(clean);
+      openWorkoutBuilderModal();
+      document.getElementById('wbTitle').value = plan.title || "Workout IA";
+      currentWorkoutSteps = plan.steps || [];
+      renderWorkoutStepRows();
+    } catch(e) { alert("Errore IA: " + e.message); }
+  }
+
+  // ==========================================
+  // 5. PMC CHART (CTL / ATL / TSB)
+  // ==========================================
+  function computePMC(acts) {
+    if (!acts.length) return [];
+    let tssByDate = {};
+    acts.forEach(a => { tssByDate[a.dateStr] = (tssByDate[a.dateStr] || 0) + (a.rTSS || 0); });
+    const dates = Object.keys(tssByDate).sort();
+    let cur = new Date(dates[0]);
+    cur.setDate(cur.getDate() - 14);
+    let end = new Date();
+    let ctl = 0, atl = 0, pmcSeries = [];
+
+    while (cur <= end) {
+      const dStr = cur.toISOString().split('T')[0];
+      const dayTss = tssByDate[dStr] || 0;
+      ctl += (dayTss - ctl) * CTL_DECAY;
+      atl += (dayTss - atl) * ATL_DECAY;
+      pmcSeries.push({ date: dStr, tss: dayTss, ctl: Math.round(ctl*10)/10, atl: Math.round(atl*10)/10, tsb: Math.round((ctl-atl)*10)/10 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return pmcSeries;
+  }
+
+  function updateTrainingStatusBanner(pmcSeries, acts) {
+    if (!pmcSeries.length) return;
+    const today = pmcSeries[pmcSeries.length - 1];
+    document.getElementById('bannerCTL').innerText = today.ctl;
+    document.getElementById('bannerATL').innerText = today.atl;
+    document.getElementById('bannerTSB').innerText = (today.tsb > 0 ? '+' : '') + today.tsb;
+    document.getElementById('statusBadge').innerText = today.tsb >= -10 && today.tsb <= 20 ? "Forma Ideale" : (today.tsb < -25 ? "Fatica Alta" : "Scarico");
+
+    const recentActs = acts.filter(a => (Date.now() - a.startTime) <= 7 * 24 * 3600 * 1000);
+    document.getElementById('bannerKm7d').innerText = `${recentActs.reduce((s,a)=>s+(a.totalDistKm||0),0).toFixed(1)} km`;
+    document.getElementById('bannerTSS7d').innerText = Math.round(recentActs.reduce((s,a)=>s+(a.rTSS||0),0));
+  }
+
+  function renderPMCChart(pmcData) {
+    const ctx = document.getElementById('pmcChart').getContext('2d');
+    if (pmcChartInstance) pmcChartInstance.destroy();
+    if (!pmcData.length) return;
+
+    const selectedYear = document.getElementById('pmcYearSelect')?.value || 'all';
+    const selectedMonth = document.getElementById('pmcMonthSelect')?.value || 'all';
+
+    let filteredPMC = pmcData;
+    if (selectedYear !== 'all') filteredPMC = filteredPMC.filter(d => d.date.startsWith(selectedYear));
+    if (selectedMonth !== 'all') filteredPMC = filteredPMC.filter(d => d.date.split('-')[1] === selectedMonth);
+    if (!filteredPMC.length) filteredPMC = pmcData.slice(-30);
+
+    pmcChartInstance = new Chart(ctx, {
+      data: {
+        labels: filteredPMC.map(d => d.date),
+        datasets: [
+          { type: 'line', label: 'CTL (Fitness)', data: filteredPMC.map(d => d.ctl), borderColor: '#00b4d8', borderWidth: 2, pointRadius: 0 },
+          { type: 'line', label: 'ATL (Fatica)', data: filteredPMC.map(d => d.atl), borderColor: '#ff4d6d', borderWidth: 1.8, pointRadius: 0 },
+          { type: 'line', label: 'TSB (Forma)', data: filteredPMC.map(d => d.tsb), borderColor: '#ffb703', fill: true, backgroundColor: 'rgba(255, 183, 3, 0.08)', pointRadius: 0 },
+          { type: 'bar', label: 'TSS', data: filteredPMC.map(d => d.tss), backgroundColor: 'rgba(252, 82, 0, 0.45)', yAxisID: 'yTSS' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: '#1a1a24' } },
+          y: { grid: { color: '#222230' } },
+          yTSS: { position: 'right', display: false }
+        }
+      }
+    });
+  }
+
+  // ==========================================
+  // 6. LOGBOOK, DETTAGLIO STRAVA & MAPPA
+  // ==========================================
+  function renderActivityFeed() {
+    document.getElementById('actCount').innerText = activities.length;
+    const listEl = document.getElementById('activityList');
+
+    if (!activities.length) {
+      listEl.innerHTML = `<p style="padding:16px; color:var(--muted); font-size:0.82rem;">Nessuna attività caricata</p>`;
+      return;
+    }
+
+    listEl.innerHTML = activities.slice().sort((a,b)=>b.startTime-a.startTime).map(act => `
+      <div class="activity-entry ${act.id === selectedActivityId ? 'active' : ''}" onclick="selectActivity('${act.id}')">
+        <div>
+          <div class="act-date">${act.dateStr}</div>
+          <div class="act-title">${act.title}</div>
+          <div class="act-stats">${(act.totalDistKm || 0).toFixed(1)} km • D+ ${act.totalElevationGain || 0}m</div>
+        </div>
+        <span class="badge-itra">⚡ ${act.itraScore || 0}</span>
       </div>
     `).join('');
   }
@@ -317,32 +1160,34 @@
     const act = activities.find(a => a.id === id);
     if (!act) return;
 
-    renderList();
+    renderActivityFeed();
 
-    // Dati Hero
-    document.getElementById('actTitle').innerText = act.title;
-    document.getElementById('actDate').innerText = `${act.dateStr} • Corsa`;
-    document.getElementById('actITRA').innerText = `⚡ ${act.itraScore || calculateITRA(act.totalDistKm, act.totalElevationGain, act.totalTimeSec)} ITRA`;
+    document.getElementById('stravaActTitle').innerText = act.title || "Corsa";
+    document.getElementById('stravaActDate').innerText = `${act.dateStr} • Durata: ${formatDuration(act.totalTimeSec)}`;
+    document.getElementById('stravaActITRA').innerText = `⚡ ${act.itraScore || calculateITRA(act.totalDistKm, act.totalElevationGain, act.totalTimeSec)} ITRA`;
 
-    document.getElementById('valDist').innerText = `${act.totalDistKm.toFixed(2)} km`;
-    document.getElementById('valElev').innerText = `${act.totalElevationGain} m`;
-    document.getElementById('valTime').innerText = formatTime(act.totalTimeSec);
-    document.getElementById('valPace').innerText = `Passo: ${formatPace(act.avgPaceSec)}`;
-    document.getElementById('valEffort').innerText = `${(act.totalDistKm + (act.totalElevationGain / 100)).toFixed(1)} km`;
-    document.getElementById('valHR').innerText = act.avgHR ? `${act.avgHR} bpm` : '152 bpm';
+    document.getElementById('valDist').innerText = `${(act.totalDistKm || 0).toFixed(2)} km`;
+    document.getElementById('valElev').innerText = `${act.totalElevationGain || 0} m`;
+    document.getElementById('valTime').innerText = formatDuration(act.totalTimeSec || 0);
+    document.getElementById('valPace').innerText = `Passo: ${formatSecToPace(act.avgPaceSec)}`;
+    document.getElementById('valEffort').innerText = `${(act.totalDistKm + (act.totalElevationGain/100)).toFixed(1)} km`;
+    document.getElementById('valTSS').innerText = `${act.rTSS || 0} TSS`;
+    document.getElementById('valIF').innerText = `IF: ${(act.intensityFactor || 0.85).toFixed(2)}`;
 
-    document.getElementById('eleSummary').innerText = `D+ ${act.totalElevationGain} m • Quota max: ${act.totalElevationGain + 200} m`;
-
-    renderMap(act);
-    renderChart(act);
+    renderStravaMap(act);
+    renderStravaElevationChart(act);
     renderSplits(act);
   }
 
-  function renderMap(act) {
+  function renderStravaMap(act) {
+    const mapDiv = document.getElementById('map');
+    if (!mapDiv) return;
+
     if (!mapInstance) {
-      mapInstance = L.map('map', { zoomControl: true }).setView([45.55, 11.53], 12);
+      mapInstance = L.map('map', { zoomControl: true }).setView([45.5455, 11.5354], 12);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 18
       }).addTo(mapInstance);
     }
 
@@ -353,8 +1198,7 @@
     if (act.points && act.points.length > 2 && act.points[0].lat) {
       latlngs = act.points.map(p => [p.lat, p.lon]);
     } else {
-      // Coordinate realistiche di partenza vicentine se mancano i punti grezzi
-      const name = act.title.toLowerCase();
+      const name = (act.title || "").toLowerCase();
       let cLat = 45.545, cLon = 11.535;
       if (name.includes("cornedo")) { cLat = 45.618; cLon = 11.350; }
       else if (name.includes("recoaro")) { cLat = 45.700; cLon = 11.220; }
@@ -370,7 +1214,7 @@
       }
     }
 
-    // Linea Arancione Strava Spessa e Marcata
+    // Linea Arancione Strava Marcata
     mapPolyline = L.polyline(latlngs, {
       color: '#fc5200',
       weight: 5,
@@ -388,38 +1232,38 @@
     mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [30, 30] });
   }
 
-  function renderChart(act) {
-    const ctx = document.getElementById('elevationChart').getContext('2d');
-    if (chartInstance) chartInstance.destroy();
+  function renderStravaElevationChart(act) {
+    const ctx = document.getElementById('workoutChart').getContext('2d');
+    if (workoutChartInstance) workoutChartInstance.destroy();
 
     const totalKm = Math.max(1, Math.round(act.totalDistKm));
-    let labels = [];
+    document.getElementById('lblEleSummary').innerText = `D+ ${act.totalElevationGain || 0} m su ${act.totalDistKm.toFixed(1)} km`;
+
+    let kmLabels = [];
     let elevation = [];
 
-    // Profilo altimetrico campionato per chilometro esatto
     for (let k = 0; k <= totalKm; k++) {
-      labels.push(`${k} km`);
-      // Profilo basato sul dislivello reale registrato
+      kmLabels.push(`${k} km`);
       const progress = k / totalKm;
       const wave = Math.sin(progress * Math.PI) + (0.15 * Math.sin(progress * Math.PI * 4));
-      elevation.push(Math.round(180 + (act.totalElevationGain * wave)));
+      elevation.push(Math.round(180 + ((act.totalElevationGain || 0) * wave)));
     }
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 220);
-    gradient.addColorStop(0, 'rgba(252, 82, 0, 0.4)');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0, 'rgba(252, 82, 0, 0.45)');
     gradient.addColorStop(1, 'rgba(252, 82, 0, 0.02)');
 
-    chartInstance = new Chart(ctx, {
+    workoutChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: labels,
+        labels: kmLabels,
         datasets: [{
           data: elevation,
           borderColor: '#fc5200',
           borderWidth: 3,
           backgroundColor: gradient,
           fill: true,
-          tension: 0.3,
+          tension: 0.25,
           pointRadius: 0,
           pointHoverRadius: 6,
           pointHoverBackgroundColor: '#fc5200',
@@ -433,7 +1277,7 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1f1f23',
+            backgroundColor: '#1a1b23',
             titleColor: '#fc5200',
             callbacks: {
               title: (i) => `Chilometro: ${i[0].label}`,
@@ -442,8 +1286,8 @@
           }
         },
         scales: {
-          x: { grid: { color: '#f0f0f3' }, ticks: { font: { weight: '700' } } },
-          y: { grid: { color: '#ebebed' }, ticks: { callback: (v) => `${v} m` } }
+          x: { grid: { color: '#20222e' }, ticks: { font: { weight: '700' }, color: '#888b99' } },
+          y: { grid: { color: '#242634' }, ticks: { callback: (v) => `${v} m`, color: '#888b99' } }
         }
       }
     });
@@ -456,12 +1300,12 @@
 
     for (let k = 1; k <= totalKm; k++) {
       const paceVar = act.avgPaceSec + (Math.sin(k) * 15);
-      const elevVar = Math.round(act.totalElevationGain / totalKm + (Math.cos(k) * 12));
+      const elevVar = Math.round((act.totalElevationGain || 0) / totalKm + (Math.cos(k) * 12));
       html += `
         <tr>
           <td>${k}</td>
-          <td>${formatPace(paceVar)}</td>
-          <td style="color: ${elevVar >= 0 ? '#fc5200' : '#0077b6'};">${elevVar >= 0 ? '+' : ''}${elevVar} m</td>
+          <td>${formatSecToPace(paceVar)}</td>
+          <td style="color: ${elevVar >= 0 ? '#fc5200' : '#00b4d8'};">${elevVar >= 0 ? '+' : ''}${elevVar} m</td>
           <td>${act.avgHR ? act.avgHR + (k % 4) : 152} bpm</td>
         </tr>
       `;
@@ -469,18 +1313,76 @@
     tbody.innerHTML = html;
   }
 
+  // Utility
+  function formatSecToPace(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return "--:--";
+    const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}/km`;
+  }
+  function formatDuration(sec) {
+    if (!sec || isNaN(sec) || sec <= 0) return "--";
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+    return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+  }
+
+  // Database IndexedDB
+  function initDB() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = (e) => { e.target.result.createObjectStore(STORE_NAME, { keyPath: "id" }); };
+      req.onsuccess = (e) => { db = e.target.result; res(db); };
+      req.onerror = rej;
+    });
+  }
+  function dbGetAllActivities() {
+    return new Promise(res => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => res(req.result || []);
+    });
+  }
+  function dbSaveActivity(act) {
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(act);
+      tx.oncomplete = res;
+      tx.onerror = rej;
+    });
+  }
+
+  // Avvio
   window.addEventListener('DOMContentLoaded', async () => {
+    await initDB();
+    loadAthletesFromStorage();
+
+    const savedClientId = localStorage.getItem('tp_google_client_id');
+    if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
+    const savedGhRepo = localStorage.getItem('tp_gh_repo');
+    if (savedGhRepo) document.getElementById('ghRepoInput').value = savedGhRepo;
+    const savedGhToken = localStorage.getItem('tp_gh_token');
+    if (savedGhToken) document.getElementById('ghTokenInput').value = savedGhToken;
+    const savedGeminiKey = localStorage.getItem('tp_gemini_api_key');
+    if (savedGeminiKey) document.getElementById('geminiApiKey').value = savedGeminiKey;
+
+    renderAthleteSelector();
+
+    allActivities = await dbGetAllActivities();
+
     try {
       const res = await fetch('activities.json?t=' + Date.now());
       if (res.ok) {
-        activities = await res.json();
+        const feed = await res.json();
+        const list = Array.isArray(feed) ? feed : (feed.activities || []);
+        for (let item of list) {
+          if (!item.athleteId) item.athleteId = athletes[0].id;
+          item.itraScore = calculateITRA(item.totalDistKm, item.totalElevationGain, item.totalTimeSec);
+          await dbSaveActivity(item);
+        }
+        allActivities = await dbGetAllActivities();
       }
     } catch(e) {}
 
-    if (activities.length > 0) {
-      renderList();
-      selectActivity(activities[0].id);
-    }
+    filterActivitiesForCurrentAthlete();
   });
 </script>
 
