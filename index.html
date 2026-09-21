@@ -258,11 +258,10 @@
     .act-title { font-weight: 700; font-size: 0.9rem; margin: 2px 0; color: #fff; }
     .act-stats { font-size: 0.78rem; color: var(--muted); }
 
-    /* Badge Strava / ITRA */
     .badge-tss { background: rgba(0, 180, 216, 0.15); color: var(--accent-ctl); padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; }
     .badge-itra { background: rgba(252, 76, 2, 0.18); color: var(--strava-orange); padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; }
 
-    /* Statistiche Header Corsa (Stile Strava Activity Summary) */
+    /* Statistiche Header Corsa */
     .strava-activity-header {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -317,7 +316,7 @@
       <div class="logo-badge">PRO</div>
       <div>
         <h1>Trail Analytics Studio</h1>
-        <p style="color: var(--muted); font-size: 0.76rem; font-weight: 600;">Interfaccia Ispirata a Strava & Performance Trail</p>
+        <p style="color: var(--muted); font-size: 0.76rem; font-weight: 600;">Interfaccia Strava Edition & Google Drive Backup</p>
       </div>
     </div>
 
@@ -331,8 +330,8 @@
       </div>
 
       <button class="btn-strava primary" id="btnGoogleAuth" onclick="handleAuthClick()"><span>☁️ Connetti Drive</span></button>
-      <button class="btn-strava" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()"><span>⬆️ Salva</span></button>
-      <button class="btn-strava" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()"><span>⬇️ Sync</span></button>
+      <button class="btn-strava" id="btnPushDrive" style="display: none;" onclick="saveToGoogleDrive()"><span>⬆️ Salva Backup</span></button>
+      <button class="btn-strava" id="btnPullDrive" style="display: none;" onclick="loadFromGoogleDrive()"><span>⬇️ Sincronizza</span></button>
     </div>
   </header>
 
@@ -597,12 +596,11 @@
   const ATL_DECAY = 1 - Math.exp(-1 / 7);
 
   // ==========================================
-  // 2. FORMULA ITRA CALIBRATA SULLE GARE TRAIL
+  // 2. MOTORE MATEMATICO ITRA
   // ==========================================
   function calculateITRA(distKm, elevGainM, timeSec) {
     if (!distKm || distKm <= 0.2 || !timeSec || timeSec <= 60) return 0;
     const effortKm = distKm + (elevGainM / 100.0);
-    // Benchmark mondiale calibrato (40.5 km-sforzo in 2h 14m corrisponde a 1000 punti)
     const baseSpeedKmH = 17.5;
     const t0Sec = (effortKm / baseSpeedKmH) * 3600 * Math.pow(Math.max(1, effortKm) / 10.0, 0.088);
 
@@ -651,10 +649,164 @@
   }
 
   function saveDriveClientId() {
-    localStorage.setItem('tp_google_client_id', document.getElementById('clientIdInput').value.trim());
+    const val = document.getElementById('clientIdInput').value.trim();
+    localStorage.setItem('tp_google_client_id', val);
     tokenClient = null;
   }
 
+  // ==========================================
+  // 3. GOOGLE DRIVE OAUTH2 COMPLETO E RIPRISTINATO
+  // ==========================================
+  function initGoogleOAuth() {
+    let clientId = document.getElementById('clientIdInput').value.trim() || localStorage.getItem('tp_google_client_id');
+    if (!clientId) {
+      clientId = prompt("Inserisci il tuo Google Drive Client ID OAuth2 per connetterti:");
+      if (clientId && clientId.trim()) {
+        document.getElementById('clientIdInput').value = clientId.trim();
+        saveDriveClientId();
+      } else {
+        return false;
+      }
+    }
+
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+      alert("Libreria Google Identity non ancora pronta. Attendi qualche secondo e riprova.");
+      return false;
+    }
+
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: DRIVE_SCOPE,
+        callback: (tokenResponse) => {
+          if (tokenResponse.error) {
+            alert("Autenticazione Drive fallita: " + tokenResponse.error);
+            return;
+          }
+          accessToken = tokenResponse.access_token;
+          const btnAuth = document.getElementById('btnGoogleAuth');
+          btnAuth.innerHTML = "<span>✅ Drive Connesso</span>";
+          btnAuth.classList.remove('primary');
+          document.getElementById('btnPushDrive').style.display = "inline-flex";
+          document.getElementById('btnPullDrive').style.display = "inline-flex";
+        }
+      });
+      return true;
+    } catch (err) {
+      alert("Errore inizializzazione Google Client: " + err.message);
+      return false;
+    }
+  }
+
+  function handleAuthClick() {
+    if (!tokenClient) {
+      const ok = initGoogleOAuth();
+      if (!ok) return;
+    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+
+  async function findDriveFileId() {
+    const query = encodeURIComponent(`name = '${DRIVE_FILENAME}' and trashed = false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    return data.files && data.files.length ? data.files[0].id : null;
+  }
+
+  async function saveToGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Google Drive!");
+    const btn = document.getElementById('btnPushDrive');
+    btn.innerText = "Salvataggio...";
+
+    try {
+      const allActs = await dbGetAllActivities();
+      const payload = {
+        athletes: athletes,
+        activities: allActs,
+        scheduledWorkouts: scheduledWorkouts
+      };
+      const content = JSON.stringify(payload);
+      const fileId = await findDriveFileId();
+
+      if (fileId) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: content
+        });
+      } else {
+        const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', new Blob([content], { type: 'application/json' }));
+
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: form
+        });
+      }
+      btn.innerText = "✅ Salvato!";
+      setTimeout(() => { btn.innerText = "⬆️ Salva Backup"; }, 2000);
+    } catch (err) {
+      alert("Errore salvataggio Drive: " + err.message);
+      btn.innerText = "⬆️ Salva Backup";
+    }
+  }
+
+  async function loadFromGoogleDrive() {
+    if (!accessToken) return alert("Prima connetti Google Drive!");
+    const btn = document.getElementById('btnPullDrive');
+    btn.innerText = "Download...";
+
+    try {
+      const fileId = await findDriveFileId();
+      if (!fileId) {
+        alert("Nessun backup trovato su Drive con il nome " + DRIVE_FILENAME);
+        btn.innerText = "⬇️ Sincronizza";
+        return;
+      }
+
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+
+      if (data.athletes && Array.isArray(data.athletes)) {
+        athletes = data.athletes;
+        saveAthletesToStorage();
+        renderAthleteSelector();
+      }
+
+      if (data.scheduledWorkouts && Array.isArray(data.scheduledWorkouts)) {
+        scheduledWorkouts = data.scheduledWorkouts;
+        saveWorkoutsToStorage();
+      }
+
+      let cloudActs = data.activities || (Array.isArray(data) ? data : []);
+      if (Array.isArray(cloudActs)) {
+        await dbClearAll();
+        for (let act of cloudActs) {
+          if (!act.athleteId) act.athleteId = athletes[0].id;
+          await dbSaveActivity(act);
+        }
+        allActivities = cloudActs;
+        filterActivitiesForCurrentAthlete();
+
+        btn.innerText = "✅ Sincronizzato!";
+        setTimeout(() => { btn.innerText = "⬇️ Sincronizza"; }, 2000);
+      }
+    } catch (err) {
+      alert("Errore sincronizzazione da Drive: " + err.message);
+      btn.innerText = "⬇️ Sincronizza";
+    }
+  }
+
+  // ==========================================
+  // 4. GESTIONE ATLETI & FILTRI
+  // ==========================================
   function populatePMCYearSelector() {
     const yearSelect = document.getElementById('pmcYearSelect');
     if (!yearSelect) return;
@@ -768,7 +920,7 @@
   }
 
   // ==========================================
-  // 3. GRAFICO ALTIMETRICO STRAVA CHILOMETRO PER CHILOMETRO
+  // 5. GRAFICO ALTIMETRICO STRAVA KM PER KM
   // ==========================================
   function renderWorkoutChart(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
@@ -781,7 +933,6 @@
     let kmLabels = [];
     let elevationPoints = [];
 
-    // Se l'attività ha i singoli punti registrati (da file FIT/GPX)
     if (act.points && act.points.length > 10 && act.points[0].ele !== undefined) {
       const step = Math.max(1, Math.floor(act.points.length / 100));
       for (let i = 0; i < act.points.length; i += step) {
@@ -791,17 +942,13 @@
         elevationPoints.push(Math.round(pt.ele));
       }
     } else {
-      // GENERATORE ALTIMETRICO STRAVA KM PER KM
-      // Suddivide l'uscita in campionamenti precisi ogni 0.5 km o 1.0 km
       const pointsCount = Math.max(12, Math.round(totalKm * 2));
-      const baseAltitude = 200; // Quota media collinare/montana
+      const baseAltitude = 200;
       
-      // Profilo ondulato realistico per il trail: salite ripide, selle intermedie e discese
       for (let i = 0; i <= pointsCount; i++) {
         const currentDist = (i / pointsCount) * totalKm;
         kmLabels.push(currentDist.toFixed(1) + ' km');
 
-        // Onda principale di ascesa/discesa montuosa combinata con variazioni di pendenza
         const mainAscent = Math.sin((i / pointsCount) * Math.PI);
         const trailSpurs = Math.sin((i / pointsCount) * Math.PI * 3.5) * 0.18;
         const ele = Math.round(baseAltitude + ((mainAscent + trailSpurs) * (totalDPlus * 0.88)));
@@ -809,7 +956,6 @@
       }
     }
 
-    // Gradiente Strava (Grigio scuro verso il trasparente con bordo grigio chiaro)
     const gradient = ctx.createLinearGradient(0, 0, 0, 260);
     gradient.addColorStop(0, 'rgba(160, 160, 175, 0.45)');
     gradient.addColorStop(1, 'rgba(30, 30, 40, 0.05)');
@@ -872,14 +1018,13 @@
   }
 
   // ==========================================
-  // 4. LOGBOOK, SELEZIONE ATTIVITÀ & MAPPA
+  // 6. LOGBOOK, SELEZIONE ATTIVITÀ & MAPPA
   // ==========================================
   function selectActivity(id) {
     selectedActivityId = id;
     const act = activities.find(a => a.id === id);
     if (!act) return;
 
-    // Evidenziazione riga attiva nella lista
     const listEl = document.getElementById('activityList');
     listEl.querySelectorAll('.activity-row').forEach(row => row.classList.remove('active'));
     const rows = listEl.querySelectorAll('.activity-row');
@@ -887,7 +1032,6 @@
     const idx = sorted.findIndex(a => a.id === id);
     if (idx !== -1 && rows[idx]) rows[idx].classList.add('active');
 
-    // Popola l'header Strava dell'attività
     document.getElementById('stravaActTitle').innerText = act.title || "Corsa";
     document.getElementById('stravaActDate').innerText = `${act.dateStr} • ${formatDuration(act.totalTimeSec)}`;
 
@@ -901,14 +1045,12 @@
     document.getElementById('valTSS').innerText = `${act.rTSS || 0} TSS`;
     document.getElementById('valIF').innerText = `IF: ${(act.intensityFactor || 0.85).toFixed(2)}`;
 
-    // Tabella Frequenza Cardiaca & Parametri
     document.getElementById('tdAvgHR').innerText = act.avgHR ? `${act.avgHR} bpm` : '154 bpm';
     document.getElementById('tdMaxHR').innerText = act.maxHR ? `${act.maxHR} bpm` : '176 bpm';
     document.getElementById('tdCadence').innerText = act.avgCadence ? `${act.avgCadence} spm` : '166 spm';
     const grade = act.totalDistKm > 0 ? ((act.totalElevationGain / (act.totalDistKm * 1000)) * 100).toFixed(1) : 0;
     document.getElementById('tdAvgGrade').innerText = `${grade} %`;
 
-    // Renderizza il profilo chilometro per chilometro e la mappa
     renderWorkoutChart(act);
     initOrUpdateMap(act);
   }
@@ -964,7 +1106,7 @@
   }
 
   // ==========================================
-  // 5. CALCOLO PMC, CALENDARIO & WORKOUT
+  // 7. CALCOLO PMC, CALENDARIO & WORKOUT
   // ==========================================
   function computePMC(acts) {
     if (!acts.length) return [];
@@ -1307,6 +1449,14 @@
       tx.objectStore(STORE_NAME).put(act);
       tx.oncomplete = () => res();
       tx.onerror = (e) => rej(e);
+    });
+  }
+  function dbClearAll() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
     });
   }
 
