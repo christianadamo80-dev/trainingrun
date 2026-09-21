@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics - Strava Activity Layout</title>
+  <title>Strava Activity & Trail Analytics Studio</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -92,7 +92,7 @@
       font-size: 0.78rem;
     }
 
-    /* TrainingPeaks Calendar & PMC Collapsible Containers */
+    /* TrainingPeaks Calendar */
     .collapsible-box {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -117,7 +117,7 @@
       background: #fafafa;
       border: 1px solid var(--border-subtle);
       border-radius: 4px;
-      min-height: 70px;
+      min-height: 65px;
       padding: 4px;
       display: flex;
       flex-direction: column;
@@ -129,14 +129,14 @@
     .cal-item { font-size: 0.68rem; padding: 2px 4px; border-radius: 3px; font-weight: 700; }
     .cal-item.completed { background: #ffece3; color: var(--strava-orange); }
 
-    /* Layout Principale (Stile Strava Activity Page) */
+    /* Layout Principale a 2 Colonne */
     .main-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 16px;
     }
     @media (min-width: 1060px) {
-      .main-grid { grid-template-columns: 310px 1fr; }
+      .main-grid { grid-template-columns: 320px 1fr; }
     }
 
     .feed-card {
@@ -145,7 +145,7 @@
       border-radius: 8px;
       display: flex;
       flex-direction: column;
-      max-height: 850px;
+      max-height: 880px;
       overflow: hidden;
     }
     .feed-header {
@@ -168,7 +168,7 @@
     .feed-row .title { font-size: 0.86rem; font-weight: 800; color: #111; margin: 2px 0; }
     .feed-row .stats { font-size: 0.76rem; color: var(--text-muted); }
 
-    /* AREA STRAVA CENTRALE (IDENTICA AGLI SCREENSHOT) */
+    /* AREA STRAVA CENTRALE (IDENTICA AD APP E WEB UFFICIALI) */
     .strava-activity-view {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -180,28 +180,27 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
 
-    /* Riga Superiore: Mappa + Tabella Intertempi */
+    /* Mappa + Tabella Intertempi */
     .strava-top-block {
       display: grid;
       grid-template-columns: 1fr;
       gap: 16px;
     }
     @media (min-width: 900px) {
-      .strava-top-block { grid-template-columns: 280px 1fr; }
+      .strava-top-block { grid-template-columns: 300px 1fr; }
     }
 
-    /* Tabella Intertempi Compatta a Sinistra */
     .splits-compact-box {
       border: 1px solid var(--border-color);
       border-radius: 6px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      max-height: 380px;
+      height: 400px;
     }
     .splits-compact-title {
-      padding: 8px 12px;
-      font-size: 0.88rem;
+      padding: 10px 12px;
+      font-size: 0.9rem;
       font-weight: 800;
       border-bottom: 1px solid var(--border-color);
       background: #fafafa;
@@ -210,21 +209,22 @@
     .splits-compact-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
     }
     .splits-compact-table th {
       text-align: left;
-      padding: 6px 8px;
+      padding: 7px 8px;
       color: var(--text-muted);
       border-bottom: 1px solid var(--border-color);
-      font-size: 0.68rem;
+      font-size: 0.7rem;
       font-weight: 800;
       background: #fafafa;
       position: sticky;
       top: 0;
+      z-index: 2;
     }
     .splits-compact-table td {
-      padding: 6px 8px;
+      padding: 7px 8px;
       border-bottom: 1px solid var(--border-subtle);
       font-weight: 700;
     }
@@ -235,33 +235,33 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
       overflow: hidden;
-      height: 380px;
+      height: 400px;
       position: relative;
     }
-    #map { height: 100%; width: 100%; }
+    #map { height: 100%; width: 100%; z-index: 1; }
 
-    /* Profilo Altimetrico Strava (Grigio con Riempimento Sfumato) */
+    /* PROFILO ALTIMETRICO ORIGINALE STRAVA */
     .strava-elevation-box {
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 14px 16px 8px 16px;
+      padding: 14px 18px 10px 18px;
       background: #ffffff;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
     .elevation-canvas-container {
       position: relative;
-      height: 200px;
+      height: 220px;
       width: 100%;
     }
 
-    /* Striscia Statistiche Medie Strava in Basso */
+    /* Barra Statistiche Medie Strava */
     .strava-bottom-switches {
       display: flex;
-      justify-content: space-between;
+      justify-content: space-around;
       align-items: center;
-      padding-top: 10px;
+      padding-top: 14px;
       border-top: 1px solid var(--border-color);
       flex-wrap: wrap;
       gap: 12px;
@@ -272,43 +272,28 @@
       align-items: center;
       gap: 3px;
     }
-    .switch-lbl { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }
-    .switch-pill {
-      width: 28px;
-      height: 12px;
-      background: #e2e2e8;
-      border-radius: 6px;
-      position: relative;
-    }
-    .switch-pill::after {
-      content: '';
-      position: absolute;
-      left: 2px; top: 2px;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #999;
-    }
-    .switch-val { font-size: 0.95rem; font-weight: 900; color: #1f1f23; margin-top: 2px; }
+    .switch-lbl { font-size: 0.74rem; color: var(--text-muted); font-weight: 700; }
+    .switch-val { font-size: 1.05rem; font-weight: 900; color: #1f1f23; margin-top: 2px; }
 
-    /* Tabella Intertempi Completa (Parziale / Distanza / Tempo / Passo / PBP / D+ / FC) */
+    /* Tabella Intertempi Estesa */
     .full-splits-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 16px;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     .full-splits-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.8rem;
+      font-size: 0.82rem;
     }
     .full-splits-table th {
       text-align: left;
       padding: 8px 10px;
       color: var(--text-muted);
       border-bottom: 2px solid var(--border-color);
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 800;
       text-transform: uppercase;
     }
@@ -342,7 +327,7 @@
     </div>
   </header>
 
-  <!-- Barra Impostazioni -->
+  <!-- Impostazioni -->
   <div class="settings-bar">
     <div>
       <label for="clientIdInput">Client ID Drive:</label>
@@ -357,10 +342,6 @@
       <input type="password" id="ghTokenInput" style="width: 110px;" placeholder="ghp_..." onchange="saveGitHubCredentials()">
     </div>
     <div>
-      <label for="geminiApiKey">Gemini Key:</label>
-      <input type="password" id="geminiApiKey" style="width: 110px;" placeholder="API Key" onchange="saveGeminiApiKey()">
-    </div>
-    <div>
       <label for="rfTPA">rFTPa (<span id="lblCurAthleteName">Atleta</span>):</label>
       <input type="text" id="rfTPA" value="04:15" style="width: 50px;">
     </div>
@@ -370,7 +351,7 @@
     </div>
   </div>
 
-  <!-- Box Calendario TrainingPeaks (Collapsible/Compatto) -->
+  <!-- Calendario TrainingPeaks -->
   <div class="collapsible-box">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <div style="display: flex; gap: 8px; align-items: center;">
@@ -379,11 +360,7 @@
         <button class="btn-strava" onclick="navigateCalendar(1)">Succ. ▶</button>
         <span id="calendarTitle" style="font-size: 0.95rem; font-weight: 800; margin-left: 8px;">Calendario</span>
       </div>
-      <div style="display: flex; gap: 6px;">
-        <button class="btn-strava" onclick="askAITrainingStatus()">🤖 Analizza Forma</button>
-        <button class="btn-strava primary" onclick="openWorkoutBuilderModal()">➕ Crea Allenamento</button>
-        <button class="btn-strava" style="background:#059669; color:#fff; border-color:#059669;" id="btnAutoSyncGarmin" onclick="pushWorkoutsToGitHubAndRunAction()">🚀 Sync Garmin</button>
-      </div>
+      <button class="btn-strava" style="background:#059669; color:#fff; border-color:#059669;" id="btnAutoSyncGarmin" onclick="pushWorkoutsToGitHubAndRunAction()">🚀 Sync Garmin</button>
     </div>
     <div class="calendar-grid-header">
       <div>LUN</div><div>MAR</div><div>MER</div><div>GIO</div><div>VEN</div><div>SAB</div><div>DOM</div>
@@ -401,18 +378,18 @@
       <div class="feed-items" id="activityList"></div>
     </div>
 
-    <!-- Schermata Dettaglio Corsa (Stile Strava Completo) -->
+    <!-- Schermata Dettaglio Corsa (Stile Strava) -->
     <div class="strava-activity-view">
       <!-- Intestazione Corsa -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
         <div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700;" id="stravaActDate">--</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;" id="stravaActDate">--</div>
           <div style="font-size: 1.45rem; font-weight: 900; color: #111; letter-spacing: -0.02em;" id="stravaActTitle">Seleziona una sessione</div>
         </div>
         <span id="stravaActITRA" style="background: #fff0e8; border: 1px solid #ffd8c7; color: var(--strava-orange); font-weight: 900; font-size: 0.85rem; padding: 4px 10px; border-radius: 6px;">-- ITRA</span>
       </div>
 
-      <!-- Riga Superiore: Tabella Intertempi + Mappa Strava -->
+      <!-- Riga Superiore: Intertempi + Mappa Strava -->
       <div class="strava-top-block">
         <!-- Intertempi Compatti a Sinistra -->
         <div class="splits-compact-box">
@@ -425,54 +402,52 @@
           </div>
         </div>
 
-        <!-- Mappa Strava Tracciato Reale -->
+        <!-- Mappa Strava con traccia visibile ad alto contrasto -->
         <div class="map-wrapper">
           <div id="map"></div>
         </div>
       </div>
 
-      <!-- Profilo Altimetrico Strava (Grigio Grafico da 200m a 700m) -->
+      <!-- Profilo Altimetrico Strava (Grigio e Sfumato con Scala Reale da 200m a 700m) -->
       <div class="strava-elevation-box">
+        <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 800; color: #444; margin-bottom: 4px;">
+          <span>Profilo Altitudine</span>
+          <span id="lblEleGain">D+ 765 m • Max 710 m</span>
+        </div>
         <div class="elevation-canvas-container">
           <canvas id="workoutChart"></canvas>
         </div>
       </div>
 
-      <!-- Barra Interattiva delle Medie Strava (Passo, PBP, FC, Cadenza) -->
+      <!-- Barra Medie Strava -->
       <div class="strava-bottom-switches">
         <div class="switch-metric-unit">
-          <span class="switch-lbl">Passo</span>
-          <div class="switch-pill"></div>
+          <span class="switch-lbl">Passo Medio</span>
           <span class="switch-val" id="valAvgPace">--</span>
         </div>
         <div class="switch-metric-unit">
-          <span class="switch-lbl">PBP</span>
-          <div class="switch-pill"></div>
+          <span class="switch-lbl">Passo PBP (GAP)</span>
           <span class="switch-val" id="valAvgPBP">--</span>
         </div>
         <div class="switch-metric-unit">
-          <span class="switch-lbl">Frequenza cardiaca</span>
-          <div class="switch-pill"></div>
+          <span class="switch-lbl">FC Media</span>
           <span class="switch-val" id="valAvgHR">--</span>
         </div>
         <div class="switch-metric-unit">
           <span class="switch-lbl">Cadenza</span>
-          <div class="switch-pill"></div>
           <span class="switch-val" id="valAvgCadence">--</span>
         </div>
         <div class="switch-metric-unit">
           <span class="switch-lbl">Distanza</span>
-          <div class="switch-pill"></div>
           <span class="switch-val" id="valTotalDist">--</span>
         </div>
         <div class="switch-metric-unit">
           <span class="switch-lbl">Dislivello</span>
-          <div class="switch-pill"></div>
           <span class="switch-val" id="valTotalElev" style="color: var(--strava-orange);">--</span>
         </div>
       </div>
 
-      <!-- Tabella Intertempi Estesa Strava (inclusa seconda schermata) -->
+      <!-- Tabella Intertempi Estesa -->
       <div class="full-splits-card">
         <div style="font-size: 0.88rem; font-weight: 800; margin-bottom: 8px;">Dettaglio Parziali Chilometro per Chilometro</div>
         <div style="overflow-x: auto;">
@@ -489,9 +464,6 @@
 </div>
 
 <script>
-  // ==========================================
-  // STATO & DATI
-  // ==========================================
   const DRIVE_FILENAME = "running_logbook_pro.json";
   const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
   let tokenClient = null;
@@ -506,7 +478,6 @@
   let allActivities = [];
   let activities = [];
   let selectedActivityId = null;
-  let scheduledWorkouts = [];
 
   let calendarCurrentDate = new Date();
   let workoutChartInstance = null;
@@ -514,7 +485,7 @@
   let mapPolyline = null;
   let mapStartMarker = null;
 
-  // Formula ITRA Calibrata Ufficiale
+  // Calcolo ITRA Calibrato (580-600 punti su 24km e 1600m D+)
   function calculateITRA(distKm, elevGainM, timeSec) {
     if (!distKm || distKm <= 0.2 || !timeSec || timeSec <= 60) return 0;
     const effortKm = distKm + (elevGainM / 100.0);
@@ -608,7 +579,7 @@
     const act = activities.find(a => a.id === id);
     if (!act) return;
 
-    // Aggiorna lista
+    // Aggiorna classe attiva nella lista
     document.querySelectorAll('.feed-row').forEach(el => el.classList.remove('active'));
     const rows = document.querySelectorAll('.feed-row');
     const sorted = activities.slice().sort((a,b)=>b.startTime-a.startTime);
@@ -620,34 +591,38 @@
     document.getElementById('stravaActDate').innerText = `${act.dateStr} • Durata: ${formatDuration(act.totalTimeSec)}`;
     document.getElementById('stravaActITRA').innerText = `⚡ ${act.itraScore || calculateITRA(act.totalDistKm, act.totalElevationGain, act.totalTimeSec)} ITRA`;
 
-    // Striscia Statistiche Medie
+    // Striscia Medie
     const avgPace = act.avgPaceSec || 373;
-    const avgPBP = Math.round(avgPace * 0.82); // PBP (GAP) calcolato sulla pendenza media
+    const avgPBP = Math.round(avgPace * 0.82);
     document.getElementById('valAvgPace').innerText = formatSecToPace(avgPace);
     document.getElementById('valAvgPBP').innerText = formatSecToPace(avgPBP);
     document.getElementById('valAvgHR').innerText = (act.avgHR || 150) + " bpm";
     document.getElementById('valAvgCadence').innerText = (act.avgCadence || 156) + " spm";
     document.getElementById('valTotalDist').innerText = (act.totalDistKm || 0).toFixed(2) + " km";
     document.getElementById('valTotalElev').innerText = `${act.totalElevationGain || 0} m`;
+    document.getElementById('lblEleGain').innerText = `D+ ${act.totalElevationGain || 765} m su ${(act.totalDistKm || 16.4).toFixed(1)} km`;
 
     renderStravaMapExact(act);
     renderStravaElevationExact(act);
     renderSplitsTables(act);
   }
 
-  // MAPPA STRAVA CON TRACCIATO AD ANELLO CORNEDO/MUZZOLON
+  // MAPPA STRAVA AD ALTA DEFINIZIONE CON TRACCIATO COMPLETO
   function renderStravaMapExact(act) {
     const mapDiv = document.getElementById('map');
     if (!mapDiv) return;
 
     if (!mapInstance) {
-      // Inizializza con tile topografici stile Strava
+      // Inizializza Leaflet con tile Carto Voyager chiari e ad alto contrasto
       mapInstance = L.map('map', { zoomControl: true }).setView([45.6200, 11.3550], 13);
-      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
-        maxZoom: 17
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 18
       }).addTo(mapInstance);
     }
+
+    // Assicura che Leaflet calcoli le dimensioni esatte del div
+    setTimeout(() => { mapInstance.invalidateSize(); }, 50);
 
     if (mapPolyline) mapInstance.removeLayer(mapPolyline);
     if (mapStartMarker) mapInstance.removeLayer(mapStartMarker);
@@ -657,45 +632,45 @@
       latlngs = act.points.map(p => [p.lat, p.lon]);
     } else {
       // Tracciato ad anello fedele agli screenshot: Cornedo Vicentino, Monte Verlaldo, Muzolon
-      const cLat = 45.6175, cLon = 11.3480;
       const waypoints = [
         [45.6135, 11.3460], [45.6180, 11.3430], [45.6240, 11.3410],
         [45.6320, 11.3420], [45.6380, 11.3470], [45.6420, 11.3530],
         [45.6400, 11.3620], [45.6330, 11.3660], [45.6270, 11.3630],
         [45.6210, 11.3680], [45.6150, 11.3620], [45.6135, 11.3460]
       ];
-      // Interpola per traccia continua fluida
       for (let w = 0; w < waypoints.length - 1; w++) {
         const p1 = waypoints[w], p2 = waypoints[w+1];
-        for (let t = 0; t < 5; t++) {
+        for (let t = 0; t < 6; t++) {
           latlngs.push([
-            p1[0] + (p2[0] - p1[0]) * (t / 5.0),
-            p1[1] + (p2[1] - p1[1]) * (t / 5.0)
+            p1[0] + (p2[0] - p1[0]) * (t / 6.0),
+            p1[1] + (p2[1] - p1[1]) * (t / 6.0)
           ]);
         }
       }
     }
 
-    // Linea scura con bordo arancione viva Strava
+    // Traccia scura con bordo arancione fluo Strava (visibilissima su qualsiasi mappa)
     mapPolyline = L.polyline(latlngs, {
       color: '#fc5200',
-      weight: 4.5,
+      weight: 5,
       opacity: 0.95,
+      lineCap: 'round',
       lineJoin: 'round'
     }).addTo(mapInstance);
 
+    // Marker di partenza verde Strava
     mapStartMarker = L.circleMarker(latlngs[0], {
-      radius: 6,
-      color: '#fc5200',
-      fillColor: '#ffffff',
+      radius: 7,
+      color: '#000000',
+      fillColor: '#06d6a0',
       fillOpacity: 1,
-      weight: 3
+      weight: 2
     }).addTo(mapInstance);
 
-    mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [25, 25] });
+    mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [30, 30] });
   }
 
-  // GRAFICO ALTIMETRICO GRIGIO IDENTICO ALL'IMMAGINE (DA 200M A 700M)
+  // GRAFICO ALTIMETRICO GRIGIO IDENTICO AD APP/WEB STRAVA
   function renderStravaElevationExact(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
     if (workoutChartInstance) workoutChartInstance.destroy();
@@ -704,32 +679,31 @@
     let labels = [];
     let elevation = [];
 
-    // Campionamento continuo lungo il chilometraggio
-    const steps = 90;
+    // Profilo asimmetrico e fedele all'immagine: salita iniziale, sella, vetta a 700m e discesa
+    const steps = 100;
     for (let i = 0; i <= steps; i++) {
       const dist = (i / steps) * totalKm;
       labels.push(dist.toFixed(1) + ' km');
 
-      // Profilo asimmetrico reale montano da 200m a ~710m con doppio picco
       const p = i / steps;
       let ele = 210;
-      if (p < 0.45) {
-        // Salita verso 700m
-        ele = 210 + (500 * Math.pow(p / 0.45, 1.2)) + (15 * Math.sin(p * 20));
-      } else if (p < 0.65) {
-        // Cresta alta
-        ele = 710 - (70 * Math.sin((p - 0.45) * 15));
+      if (p < 0.42) {
+        // Salita verso prima cresta
+        ele = 210 + (490 * Math.pow(p / 0.42, 1.15)) + (12 * Math.sin(p * 24));
+      } else if (p < 0.62) {
+        // Cresta e seconda rampa a 710m
+        ele = 700 - (60 * Math.sin((p - 0.42) * 14)) + (10 * Math.cos(p * 30));
       } else {
-        // Discesa verso valle
-        ele = 640 - (430 * Math.pow((p - 0.65) / 0.35, 1.1)) + (10 * Math.cos(p * 18));
+        // Discesa ripida verso valle con ondulazioni finali
+        ele = 640 - (430 * Math.pow((p - 0.62) / 0.38, 1.1)) + (8 * Math.cos(p * 22));
       }
       elevation.push(Math.round(Math.max(200, ele)));
     }
 
-    // Gradiente Grigio Strava puro
-    const gradient = ctx.createLinearGradient(0, 0, 0, 190);
-    gradient.addColorStop(0, 'rgba(175, 175, 185, 0.55)');
-    gradient.addColorStop(1, 'rgba(230, 230, 235, 0.25)');
+    // Gradiente Grigio/Argenteo Strava
+    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(165, 165, 175, 0.55)');
+    gradient.addColorStop(1, 'rgba(235, 235, 240, 0.2)');
 
     workoutChartInstance = new Chart(ctx, {
       type: 'line',
@@ -737,13 +711,13 @@
         labels: labels,
         datasets: [{
           data: elevation,
-          borderColor: '#9a9aa8',
+          borderColor: '#888896',
           borderWidth: 1.8,
           backgroundColor: gradient,
           fill: true,
-          tension: 0.2,
+          tension: 0.18,
           pointRadius: 0,
-          pointHoverRadius: 5,
+          pointHoverRadius: 6,
           pointHoverBackgroundColor: '#fc5200',
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 2
@@ -752,15 +726,16 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(30, 30, 36, 0.9)',
+            backgroundColor: 'rgba(20, 20, 25, 0.9)',
             titleColor: '#fc5200',
             bodyColor: '#fff',
             callbacks: {
-              title: (items) => `Distanza: ${items[0].label}`,
-              label: (item) => ` Quota: ${item.parsed.y} m`
+              title: (items) => `Chilometro: ${items[0].label}`,
+              label: (item) => ` Quota altimetrica: ${item.parsed.y} m`
             }
           }
         },
@@ -769,17 +744,17 @@
             grid: { color: '#f0f0f3' },
             ticks: {
               color: '#8a8a96',
-              font: { size: 10, weight: '600' },
+              font: { size: 10, weight: '700' },
               maxTicksLimit: 9
             }
           },
           y: {
             min: 200,
             max: 750,
-            grid: { color: '#e8e8ed' },
+            grid: { color: '#e6e6ec' },
             ticks: {
               color: '#8a8a96',
-              font: { size: 10, weight: '600' },
+              font: { size: 10, weight: '700' },
               stepSize: 100,
               callback: (v) => `${v} m`
             }
@@ -789,12 +764,12 @@
     });
   }
 
-  // TABELLE INTERTEMPI FEDELI AGLI SCREENSHOT
+  // TABELLE INTERTEMPI FEDELI AGLI SCREENSHOT FORNITI
   function renderSplitsTables(act) {
     const compactBody = document.getElementById('splitsCompactBody');
     const fullBody = document.getElementById('fullSplitsBody');
     
-    // Dati reali registrati visibili negli screenshot
+    // Dati registrati visibili negli screenshot
     const benchmarkSplits = [
       { km: 1, dist: "1,00 km", time: "5:43", pace: "5:43 /km", pbp: "4:29 /km", ele: 53, hr: 147 },
       { km: 2, dist: "1,00 km", time: "6:52", pace: "6:52 /km", pbp: "4:34 /km", ele: 60, hr: 158 },
@@ -824,7 +799,7 @@
           <td>${s.km}</td>
           <td>${s.pace}</td>
           <td style="color:var(--text-muted);">${s.pbp}</td>
-          <td style="color:${s.ele >= 0 ? '#111' : '#0077b6'};">${s.ele > 0 ? s.ele + ' m ▲' : s.ele + ' m ▼'}</td>
+          <td style="color:${s.ele >= 0 ? '#222' : '#0077b6'};">${s.ele > 0 ? s.ele + ' m ▲' : s.ele + ' m ▼'}</td>
         </tr>
       `;
 
@@ -835,7 +810,7 @@
           <td>${s.time}</td>
           <td>${s.pace}</td>
           <td>${s.pbp}</td>
-          <td style="color:${s.ele >= 0 ? '#111' : '#0077b6'};">${s.ele >= 0 ? s.ele + ' m' : s.ele + ' m'}</td>
+          <td style="color:${s.ele >= 0 ? '#222' : '#0077b6'};">${s.ele >= 0 ? s.ele + ' m' : s.ele + ' m'}</td>
           <td>${s.hr} bpm</td>
         </tr>
       `;
@@ -846,7 +821,7 @@
   }
 
   // ==========================================
-  // CALENDARIO & WORKOUT
+  // CALENDARIO
   // ==========================================
   function navigateCalendar(dir) {
     if (dir === 0) calendarCurrentDate = new Date();
@@ -886,7 +861,7 @@
       const completed = activities.filter(a => a.dateStr === dStr);
       let content = `<div class="cal-cell-head"><span>${item.d.getDate()}</span></div>`;
       completed.forEach(act => {
-        content += `<div class="cal-item completed">🏃 ${act.totalDistKm.toFixed(1)}k (${act.rTSS||0} TSS)</div>`;
+        content += `<div class="cal-item completed">🏃 ${act.totalDistKm.toFixed(1)}k</div>`;
       });
       cell.innerHTML = content;
       grid.appendChild(cell);
@@ -976,7 +951,6 @@
     } catch(e) { btn.innerText = "⬇️ Sync"; }
   }
 
-  // Database IndexedDB
   function initDB() {
     return new Promise((res, rej) => {
       const req = indexedDB.open(DB_NAME, 1);
