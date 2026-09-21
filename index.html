@@ -415,7 +415,7 @@
     </div>
   </div>
 
-  <!-- CALENDARIO ORDINATO E PULITO -->
+  <!-- CALENDARIO ORDINATO E CORRETTO (FUSO ORARIO LOCALE) -->
   <div class="calendar-card">
     <div class="calendar-toolbar">
       <div style="display: flex; gap: 8px; align-items: center;">
@@ -449,7 +449,6 @@
           <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;" id="stravaActDate">--</div>
           <div style="font-size: 1.45rem; font-weight: 900; color: #111; letter-spacing: -0.02em;" id="stravaActTitle">Seleziona una sessione</div>
         </div>
-        <span id="stravaActITRA" style="background: #fff0e8; border: 1px solid #ffd8c7; color: var(--strava-orange); font-weight: 900; font-size: 0.85rem; padding: 4px 10px; border-radius: 6px;">-- ITRA</span>
       </div>
 
       <!-- Riga Superiore: Intertempi + Mappa Strava -->
@@ -546,14 +545,12 @@
   let mapPolyline = null;
   let mapStartMarker = null;
 
-  function calculateITRA(distKm, elevGainM, timeSec) {
-    if (!distKm || distKm <= 0.2 || !timeSec || timeSec <= 60) return 0;
-    const effortKm = distKm + (elevGainM / 100.0);
-    const baseSpeedKmH = 17.5;
-    const t0Sec = (effortKm / baseSpeedKmH) * 3600 * Math.pow(Math.max(1, effortKm) / 10.0, 0.088);
-    const ratio = t0Sec / timeSec;
-    let score = Math.round(1000 * Math.pow(ratio, 1.15));
-    return Math.min(1000, Math.max(100, score));
+  // FUNZIONE PER FORMATTARE DATE LOCALI IN YYYY-MM-DD SENZA CONFLITTI UTC
+  function formatLocalDate(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   function formatSecToPace(sec) {
@@ -597,24 +594,25 @@
     filterActivitiesForCurrentAthlete();
   }
 
-  // FILTRO E DEDUPLICAZIONE RIGOROSA DELLE ATTIVITÀ
+  // FILTRO E NORMALIZZAZIONE DATE RIGOROSA
   function filterActivitiesForCurrentAthlete() {
     selectedActivityId = null;
 
-    // Rimuove duplicati e attività nulle
     const uniqueMap = new Map();
     allActivities.forEach(a => {
-      // Esclude attività a 0 km o senza durata
       if (!a.totalDistKm || a.totalDistKm < 0.2 || !a.totalTimeSec || a.totalTimeSec < 60) return;
 
-      // Chiave univoca basata su data e distanza arrotondata
-      const rawId = String(a.id || "").replace("garmin_", "");
+      // Se la sessione ha startTime, estrae la data solare locale esatta
+      if (a.startTime) {
+        const dObj = new Date(a.startTime);
+        a.dateStr = formatLocalDate(dObj);
+      }
+
       const key = `${a.dateStr}_${Math.round(a.totalDistKm * 10)}`;
 
       if (!uniqueMap.has(key)) {
         uniqueMap.set(key, a);
       } else {
-        // Tra i due, preferisce quello con prefisso garmin o con traccia points
         const existing = uniqueMap.get(key);
         if ((!existing.points || existing.points.length === 0) && a.points && a.points.length > 0) {
           uniqueMap.set(key, a);
@@ -624,10 +622,6 @@
 
     const uniqueList = Array.from(uniqueMap.values());
     activities = uniqueList.filter(a => !a.athleteId || a.athleteId === currentAthleteId || a.athleteId === "ath_default");
-
-    activities.forEach(a => {
-      a.itraScore = calculateITRA(a.totalDistKm, a.totalElevationGain, a.totalTimeSec);
-    });
 
     renderActivityFeed();
     renderCalendar();
@@ -672,7 +666,6 @@
 
     document.getElementById('stravaActTitle').innerText = act.title || "Corsa";
     document.getElementById('stravaActDate').innerText = `${act.dateStr} • Durata: ${formatDuration(act.totalTimeSec)}`;
-    document.getElementById('stravaActITRA').innerText = `⚡ ${act.itraScore || calculateITRA(act.totalDistKm, act.totalElevationGain, act.totalTimeSec)} ITRA`;
 
     const avgPace = act.avgPaceSec || 373;
     const avgPBP = Math.round(avgPace * 0.82);
@@ -889,7 +882,7 @@
   }
 
   // ==========================================
-  // CALENDARIO RAGGRUPPATO E PULITO
+  // CALENDARIO RAGGRUPPATO SENZA BUG FUSO ORARIO
   // ==========================================
   function navigateCalendar(dir) {
     if (dir === 0) calendarCurrentDate = new Date();
@@ -901,37 +894,49 @@
     const cur = getCurrentAthlete();
     const grid = document.getElementById('calendarGrid');
     grid.innerHTML = '';
+
     const year = calendarCurrentDate.getFullYear();
     const month = calendarCurrentDate.getMonth();
     const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
     document.getElementById('calendarTitle').innerText = `${monthNames[month]} ${year}`;
 
-    const firstDay = new Date(year, month, 1);
-    const startingDay = (firstDay.getDay() + 6) % 7;
+    // Calcolo primo giorno e giorni totali del mese
+    const firstDayObj = new Date(year, month, 1);
+    const startingDay = (firstDayObj.getDay() + 6) % 7; // Lunedì = 0
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const prevMonthDays = new Date(year, month, 0).getDate();
 
     let days = [];
-    for (let i = startingDay - 1; i >= 0; i--) days.push({ d: new Date(year, month - 1, prevMonthDays - i), curr: false });
-    for (let i = 1; i <= daysInMonth; i++) days.push({ d: new Date(year, month, i), curr: true });
+    // Giorni mese precedente
+    for (let i = startingDay - 1; i >= 0; i--) {
+      days.push({ d: new Date(year, month - 1, prevMonthDays - i, 12, 0, 0), curr: false });
+    }
+    // Giorni mese corrente
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ d: new Date(year, month, i, 12, 0, 0), curr: true });
+    }
+    // Giorni mese successivo
     const remaining = (7 - (days.length % 7)) % 7;
-    for (let i = 1; i <= remaining; i++) days.push({ d: new Date(year, month + 1, i), curr: false });
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ d: new Date(year, month + 1, i, 12, 0, 0), curr: false });
+    }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Data odierna calcolata localmente
+    const todayLocalStr = formatLocalDate(new Date());
 
     days.forEach(item => {
-      const dStr = item.d.toISOString().split('T')[0];
-      const isToday = dStr === todayStr;
+      const cellDateStr = formatLocalDate(item.d);
+      const isToday = cellDateStr === todayLocalStr;
+
       const cell = document.createElement('div');
       cell.className = `cal-cell ${isToday ? 'today' : ''} ${item.curr ? '' : 'different-month'}`;
 
-      // Recupera le attività univoche del giorno
-      const dayActs = activities.filter(a => a.dateStr === dStr);
+      // Attività del giorno
+      const dayActs = activities.filter(a => a.dateStr === cellDateStr);
 
       let content = `<div class="cal-cell-head"><span>${item.d.getDate()}</span></div>`;
 
       if (dayActs.length > 0) {
-        // Se più attività reali nello stesso giorno, le raggruppa in una singola voce
         const totKm = dayActs.reduce((s, a) => s + (a.totalDistKm || 0), 0);
         const totTSS = dayActs.reduce((s, a) => s + (a.rTSS || 0), 0);
         const totDPlus = dayActs.reduce((s, a) => s + (a.totalElevationGain || 0), 0);
@@ -1075,7 +1080,6 @@
         const list = Array.isArray(feed) ? feed : (feed.activities || []);
         for (let item of list) {
           if (!item.athleteId) item.athleteId = athletes[0].id;
-          item.itraScore = calculateITRA(item.totalDistKm, item.totalElevationGain, item.totalTimeSec);
           await dbSaveActivity(item);
         }
         allActivities = await dbGetAllActivities();
