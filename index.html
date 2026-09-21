@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Running & Trail Analytics Pro - Strava & TrainingPeaks Edition</title>
+  <title>Running & Trail Analytics Pro - Garmin Elevation Style</title>
   
   <!-- Chart.js & Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,8 +14,9 @@
 
   <style>
     :root {
+      --garmin-green: #52a435;
+      --garmin-green-border: #43872a;
       --strava-orange: #fc5200;
-      --strava-orange-hover: #e04900;
       --bg: #0f1015;
       --card-bg: #1a1b23;
       --card-inner: #242531;
@@ -25,7 +26,6 @@
       --accent-ctl: #00b4d8;
       --accent-atl: #ff4d6d;
       --accent-tsb: #ffb703;
-      --accent-green: #06d6a0;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -72,7 +72,6 @@
     }
     .btn-strava:hover { background: #2f3140; border-color: #434657; }
     .btn-strava.primary { background: var(--strava-orange); border-color: var(--strava-orange); color: #fff; }
-    .btn-strava.primary:hover { background: var(--strava-orange-hover); }
     .btn-strava.success { background: #059669; border-color: #059669; color: #fff; }
     .btn-strava.ai { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: #fff; }
     .btn-strava.danger { color: #ff6b6b; background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.3); }
@@ -130,7 +129,7 @@
     .ai-feedback-box h3 { font-size: 0.95rem; font-weight: 700; color: #a5b4fc; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .ai-feedback-content { font-size: 0.84rem; color: #e2e8f0; line-height: 1.6; }
 
-    /* Calendario TrainingPeaks/Strava */
+    /* Calendario TrainingPeaks */
     .tp-calendar-container {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -231,7 +230,7 @@
     }
     .pmc-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
-    /* Layout Principale a 2 Colonne (Logbook + Strava Detail) */
+    /* Layout Principale a 2 Colonne */
     .main-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
     @media (min-width: 1040px) { .main-grid { grid-template-columns: 360px 1fr; } }
 
@@ -296,18 +295,53 @@
     .stat-val { font-size: 1.65rem; font-weight: 900; color: #fff; letter-spacing: -0.02em; }
     .stat-sub { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
 
-    /* Mappa Strava */
+    /* SEZIONE ELEVAZIONE STILE GARMIN / STRAVA */
+    .garmin-elevation-card {
+      background: #ffffff;
+      border: 1px solid #dcdcde;
+      border-radius: 8px;
+      padding: 14px 18px 10px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .garmin-elevation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #2e2e33;
+    }
+    .garmin-quota-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #222;
+    }
+    .garmin-quota-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--garmin-green);
+    }
+    .elevation-chart-container {
+      position: relative;
+      height: 150px;
+      width: 100%;
+    }
+
+    /* Mappa */
     .map-box {
       border-radius: 10px;
       overflow: hidden;
       border: 1px solid var(--border);
-      height: 340px;
+      height: 320px;
       width: 100%;
     }
     #map { height: 100%; width: 100%; }
-
-    /* Grafico Altimetrico */
-    .chart-wrapper { position: relative; height: 240px; width: 100%; }
 
     /* Splits Table */
     .splits-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
@@ -324,7 +358,7 @@
       <div class="logo-badge">STRAVA</div>
       <div>
         <h1>Trail Analytics Studio</h1>
-        <p style="color: var(--muted); font-size: 0.76rem; font-weight: 600;">Calendario TrainingPeaks, Altimetria Strava & Punti ITRA</p>
+        <p style="color: var(--muted); font-size: 0.76rem; font-weight: 600;">Calendario TrainingPeaks, Profilo Quota Garmin & Punti ITRA</p>
       </div>
     </div>
 
@@ -490,7 +524,7 @@
       <div class="feed-items" id="activityList"></div>
     </div>
 
-    <!-- Scheda Corsa Strava con Mappa e Altimetria -->
+    <!-- Scheda Corsa Strava con Mappa e Altimetria Stile Garmin -->
     <div class="strava-detail-box">
       <div class="strava-title-row">
         <div>
@@ -522,24 +556,32 @@
         </div>
         <div class="stat-col">
           <span class="stat-label">TSS Carico</span>
-          <span class="stat-val" id="valTSS" style="color: var(--accent-green);">--</span>
+          <span class="stat-val" id="valTSS" style="color: #06d6a0;">--</span>
           <span class="stat-sub" id="valIF">IF: --</span>
         </div>
       </div>
 
-      <!-- Mappa Strava col Tracciato Arancione Evidente -->
+      <!-- Mappa Strava con Linea GPS Arancione -->
       <div>
         <div style="font-size: 0.88rem; font-weight: 800; margin-bottom: 8px;">Tracciato GPS Strava</div>
         <div class="map-box"><div id="map"></div></div>
       </div>
 
-      <!-- Profilo Altimetrico Strava Km per Km -->
-      <div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 800; margin-bottom: 8px;">
-          <span style="color: var(--strava-orange);">Profilo Altitudine per Chilometro</span>
-          <span style="color: var(--muted);" id="lblEleSummary">--</span>
+      <!-- GRAFICO DISLIVELLO FEDELE A GARMIN (VERDE CON PALLINO E ASSE TEMPORALE/QUOTA) -->
+      <div class="garmin-elevation-card">
+        <div class="garmin-elevation-header">
+          <div class="garmin-quota-pill">
+            <span class="garmin-quota-dot"></span>
+            <span>Quota</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.78rem; color: #666; font-weight: 600;" id="garminElevMax">Max: --</span>
+            <span style="font-size: 1rem; color: #888; cursor: pointer;">&#x2922;</span>
+          </div>
         </div>
-        <div class="chart-wrapper"><canvas id="workoutChart"></canvas></div>
+        <div class="elevation-chart-container">
+          <canvas id="workoutChart"></canvas>
+        </div>
       </div>
 
       <!-- Tabella Split Chilometrici -->
@@ -1175,7 +1217,7 @@
     document.getElementById('valIF').innerText = `IF: ${(act.intensityFactor || 0.85).toFixed(2)}`;
 
     renderStravaMap(act);
-    renderStravaElevationChart(act);
+    renderGarminElevationChart(act);
     renderSplits(act);
   }
 
@@ -1214,7 +1256,6 @@
       }
     }
 
-    // Linea Arancione Strava Marcata
     mapPolyline = L.polyline(latlngs, {
       color: '#fc5200',
       weight: 5,
@@ -1232,42 +1273,54 @@
     mapInstance.fitBounds(mapPolyline.getBounds(), { padding: [30, 30] });
   }
 
-  function renderStravaElevationChart(act) {
+  // GRAFICO ALTIMETRICO VERDE IDENTICO ALLO SCREENSHOT GARMIN
+  function renderGarminElevationChart(act) {
     const ctx = document.getElementById('workoutChart').getContext('2d');
     if (workoutChartInstance) workoutChartInstance.destroy();
 
-    const totalKm = Math.max(1, Math.round(act.totalDistKm));
-    document.getElementById('lblEleSummary').innerText = `D+ ${act.totalElevationGain || 0} m su ${act.totalDistKm.toFixed(1)} km`;
+    const totalSec = act.totalTimeSec || 3600;
+    const totalDPlus = act.totalElevationGain || 100;
+    const baseAlt = 200;
+    const maxAlt = baseAlt + totalDPlus;
+    document.getElementById('garminElevMax').innerText = `Max: ${maxAlt} m`;
 
-    let kmLabels = [];
+    let labels = [];
     let elevation = [];
 
-    for (let k = 0; k <= totalKm; k++) {
-      kmLabels.push(`${k} km`);
-      const progress = k / totalKm;
-      const wave = Math.sin(progress * Math.PI) + (0.15 * Math.sin(progress * Math.PI * 4));
-      elevation.push(Math.round(180 + ((act.totalElevationGain || 0) * wave)));
-    }
+    // Campionamento temporale fine (stile Garmin Connect)
+    const samples = 120;
+    for (let i = 0; i <= samples; i++) {
+      const sec = (i / samples) * totalSec;
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      const h = Math.floor(m / 60);
+      const remM = m % 60;
+      
+      const timeStr = h > 0 ? `${h}:${remM < 10 ? '0' : ''}${remM}:${s < 10 ? '0' : ''}${s}` : `${m}:${s < 10 ? '0' : ''}${s}`;
+      labels.push(timeStr);
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-    gradient.addColorStop(0, 'rgba(252, 82, 0, 0.45)');
-    gradient.addColorStop(1, 'rgba(252, 82, 0, 0.02)');
+      const progress = i / samples;
+      // Profilo asimmetrico e naturale con creste e discese
+      const eleProgress = Math.sin(progress * Math.PI) * 0.85 + Math.sin(progress * Math.PI * 3) * 0.12 + Math.sin(progress * Math.PI * 6) * 0.03;
+      elevation.push(Math.round(baseAlt + (totalDPlus * Math.max(0, eleProgress))));
+    }
 
     workoutChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: kmLabels,
+        labels: labels,
         datasets: [{
+          label: 'Quota',
           data: elevation,
-          borderColor: '#fc5200',
-          borderWidth: 3,
-          backgroundColor: gradient,
+          borderColor: '#46912c',
+          borderWidth: 1.5,
+          backgroundColor: '#53a336', // Verde compatto Garmin esatto
           fill: true,
-          tension: 0.25,
+          tension: 0.1,
           pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#fc5200',
-          pointHoverBorderColor: '#ffffff',
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#53a336',
+          pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 2
         }]
       },
@@ -1277,17 +1330,44 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1a1b23',
-            titleColor: '#fc5200',
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            titleColor: '#fff',
+            bodyColor: '#53a336',
+            borderColor: '#444',
+            borderWidth: 1,
             callbacks: {
-              title: (i) => `Chilometro: ${i[0].label}`,
+              title: (i) => `Tempo: ${i[0].label}`,
               label: (i) => ` Quota: ${i.parsed.y} m`
             }
           }
         },
         scales: {
-          x: { grid: { color: '#20222e' }, ticks: { font: { weight: '700' }, color: '#888b99' } },
-          y: { grid: { color: '#242634' }, ticks: { callback: (v) => `${v} m`, color: '#888b99' } }
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: '#ffffff',
+              font: { size: 10, weight: '500' },
+              maxTicksLimit: 12,
+              callback: function(val, index) {
+                // Mostra i timestamp all'interno alla base del verde stile Garmin
+                return labels[index];
+              }
+            }
+          },
+          y: {
+            min: Math.floor(baseAlt * 0.85),
+            max: Math.ceil(maxAlt * 1.08),
+            grid: {
+              color: '#e5e5e5', // Linea grigio chiaro Garmin
+              drawBorder: false
+            },
+            ticks: {
+              color: '#333333',
+              font: { size: 11, weight: '500' },
+              stepSize: 300,
+              callback: (v) => `${v},0` // Formato decimale con virgola stile Garmin
+            }
+          }
         }
       }
     });
